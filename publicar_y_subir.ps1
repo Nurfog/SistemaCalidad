@@ -22,15 +22,25 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "✅ Publicación local generada en $publicacionDir" -ForegroundColor Green
 
-# 2. Datos de Conexión FTP
-Write-Host "`n----------------------------------------------------"
-Write-Host "🌐 Configuración de Servidor FTP (Windows Server)"
-Write-Host "----------------------------------------------------"
-$ftpServer = Read-Host "Ingrese la URL o IP del servidor FTP (ej: ftp://12.34.56.78)"
-$ftpUser = Read-Host "Ingrese el Usuario FTP"
-$ftpPass = Read-Host "Ingrese la Contraseña FTP" -AsSecureString
+# --- NUEVO: Copiar el archivo .env a la carpeta de publicación ---
+if (Test-Path "$proyectoDir\.env") {
+    Write-Host "🔐 Incluyendo archivo .env en la publicación..." -ForegroundColor Cyan
+    Copy-Item "$proyectoDir\.env" -Destination "$publicacionDir\.env" -Force
+}
+# -----------------------------------------------------------------
 
-# Convertir password a texto plano para el objeto WebClient
+# 2. Datos de Conexion FTP
+Write-Host "`n----------------------------------------------------"
+Write-Host "🌐 Configuracion de Servidor FTP (Windows Server)"
+Write-Host "----------------------------------------------------"
+$ftpHost = Read-Host "Ingrese la Ip o Host (ej: calidad.norteamericano.cl)"
+$ftpUser = Read-Host "Ingrese el Usuario FTP"
+$ftpPass = Read-Host "Ingrese la Contrasena FTP" -AsSecureString
+
+# Asegurar que la URL tenga el formato ftp://
+if (-not $ftpHost.StartsWith("ftp://")) { $ftpServer = "ftp://$ftpHost" } else { $ftpServer = $ftpHost }
+
+# Convertir password
 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($ftpPass)
 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
 
@@ -38,21 +48,21 @@ $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
 Write-Host "`n🚚 Subiendo archivos al servidor..." -ForegroundColor Yellow
 
 $webClient = New-Object System.Net.WebClient
+$webClient.Proxy = $null # Evita problemas de lentitud con proxys
 $webClient.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
 
 $archivos = Get-ChildItem -Path $publicacionDir -Recurse | Where-Object { ! $_.PSIsContainer }
 
 foreach ($archivo in $archivos) {
-    # Calcular ruta relativa para el FTP
-    $rutaRelativa = $archivo.FullName.Replace($publicacionDir, "").Replace("\", "/")
-    $ftpDestino = "$ftpServer$rutaRelativa"
+    $rutaRelativa = $archivo.FullName.Replace($physicalPath_local, "").Replace($publicacionDir, "").Replace("\", "/")
+    $ftpDestino = "$ftpServer/$rutaRelativa".Replace("//", "/")
     
-    Write-Host "📤 Subiendo: $rutaRelativa ..." -ForegroundColor Gray
+    Write-Host "📤 Enviando: $rutaRelativa ..." -ForegroundColor Gray
     try {
         $uri = New-Object System.Uri($ftpDestino)
-        $webClient.UploadFile($uri, $archivo.FullName)
+        $webClient.UploadFile($uri, "STOR", $archivo.FullName)
     } catch {
-        Write-Host "⚠ Error subiendo $rutaRelativa : $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "?? Error en $rutaRelativa : $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
