@@ -28,8 +28,8 @@ Este documento detalla la hoja de ruta para completar la API de administración 
   - Registro (Log) de quién descargó cada archivo con IP y fecha (Completado ✅).
 - [x] **Control de Documentos Externos:**
   - Registro de manuales de equipos y normativas externas (Completado ✅).
-- [ ] **Gestión de Anexos:**
-  - Módulo específico para plantillas de anexos normativos.
+- [x] **Gestión de Anexos:**
+  - Módulo específico para plantillas de anexos normativos (Completado ✅).
 
 ## 🟩 Fase 4: Reportabilidad y UX
 - [ ] **Tablero de Control (Dashboard):**

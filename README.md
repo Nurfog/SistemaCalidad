@@ -29,6 +29,7 @@ Gestión completa del ciclo de vida documental con flujo de aprobación formal.
   - `Aprobado`: Publicación oficial del documento (`POST /aprobar`). Solo accesible por Administradores.
 - **Seguridad de Acceso:** Los usuarios con rol `Lector` están impedidos de ver o descargar documentos que no tengan el estado **Aprobado**.
 - **Notificaciones Automáticas:** Envío de correos electrónicos a Administradores y Encargados cuando se solicita una revisión o se aprueba un documento.
+- **Anexos y Plantillas:** Módulo dedicado para la descarga de formularios oficiales de la norma (Asistencia, Listados Maestros, etc.) (Cláusula 4.2.3).
 - **Versionamiento:** Creación automática de nuevas versiones, manteniendo el historial completo de cambios.
 - **Documentos Externos:** Módulo para el control de normativas legales, manuales de equipos o reglamentos externos (Cláusula 4.2.3 f).
 
@@ -63,10 +64,23 @@ El sistema utiliza un esquema de **Seguridad Híbrida** vinculado al sistema cen
 
 ## 📂 Configuración del Proyecto
 
-### Control de Versiones (Git)
-- `.gitignore`: Excluye binarios, caches y carpetas de almacenamiento local.
-- `.gitattributes`: Normalización de finales de línea.
 - `Storage/.gitkeep`: Mantiene la carpeta de archivos en el repositorio.
+
+---
+
+## ⚙️ Configuración para Desarrolladores
+
+### Requisitos
+- SDK de .NET 9.0+.
+- MySQL Server 8.0+.
+
+### Scripts de Inicialización SQL
+Para dejar el sistema operativo, ejecute estos scripts en su MySQL en el siguiente orden:
+1. `script_creacion_bd.sql`: Estructura núcleo del sistema.
+2. `script_fase2_mejora.sql`: Módulo de No Conformidades y Acciones.
+3. `script_permisos_usuarios.sql`: Vinculación con usuarios externos y roles.
+4. `script_fase3_auditoria.sql`: Trazabilidad y Documentos Externos.
+5. `script_anexos_plantillas.sql`: Gestión de Anexos y Plantillas base de la norma.
 
 ---
 

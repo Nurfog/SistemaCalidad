@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UsuarioPermiso> UsuariosPermisos { get; set; }
     public DbSet<AuditoriaAcceso> AuditoriaAccesos { get; set; }
     public DbSet<DocumentoExterno> DocumentosExternos { get; set; }
+    public DbSet<Anexo> Anexos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
