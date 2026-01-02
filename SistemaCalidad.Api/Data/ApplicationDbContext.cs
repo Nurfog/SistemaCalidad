@@ -10,24 +10,39 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<Document> Documents { get; set; }
-    public DbSet<DocumentVersion> DocumentVersions { get; set; }
-    public DbSet<QualityRecord> QualityRecords { get; set; }
+    public DbSet<Documento> Documentos { get; set; }
+    public DbSet<VersionDocumento> VersionesDocumento { get; set; }
+    public DbSet<RegistroCalidad> RegistrosCalidad { get; set; }
+    public DbSet<NoConformidad> NoConformidades { get; set; }
+    public DbSet<AccionCalidad> AccionesCalidad { get; set; }
+    public DbSet<UsuarioExterno> UsuariosExternos { get; set; }
+    public DbSet<UsuarioPermiso> UsuariosPermisos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Document constraints
-        modelBuilder.Entity<Document>()
-            .HasIndex(d => d.Code)
+        // Restricciones de Documentos
+        modelBuilder.Entity<Documento>()
+            .HasIndex(d => d.Codigo)
             .IsUnique();
 
-        // Relationship: Document -> Versions
-        modelBuilder.Entity<DocumentVersion>()
-            .HasOne(v => v.Document)
-            .WithMany(d => d.Revisions)
-            .HasForeignKey(v => v.DocumentId)
+        // Relación: Documento -> Versiones
+        modelBuilder.Entity<VersionDocumento>()
+            .HasOne(v => v.Documento)
+            .WithMany(d => d.Revisiones)
+            .HasForeignKey(v => v.DocumentoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Relación: NoConformidad -> Acciones
+        modelBuilder.Entity<AccionCalidad>()
+            .HasOne(a => a.NoConformidad)
+            .WithMany(nc => nc.Acciones)
+            .HasForeignKey(a => a.NoConformidadId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<NoConformidad>()
+            .HasIndex(nc => nc.Folio)
+            .IsUnique();
     }
 }

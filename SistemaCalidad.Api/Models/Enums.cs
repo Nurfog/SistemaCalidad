@@ -1,29 +1,29 @@
 namespace SistemaCalidad.Api.Models;
 
-public enum DocumentType
+public enum TipoDocumento
 {
-    QualityManual,
-    Procedure,
-    WorkInstruction,
-    Form,
-    ExternalDocument,
-    Other
+    ManualCalidad,
+    Procedimiento,
+    Instructivo,
+    Formulario,
+    DocumentoExterno,
+    Otro
 }
 
-public enum DocumentStatus
+public enum EstadoDocumento
 {
-    Draft,
-    InReview,
-    Approved,
-    Obsolete,
-    Archived
+    Borrador,
+    EnRevision,
+    Aprobado,
+    Obsoleto,
+    Archivado
 }
 
-public enum ProcessArea
+public enum AreaProceso
 {
-    Management,
-    Commercial,
-    Operational, // Training/Teaching
-    Support,
-    Administrative
+    Direccion,
+    Comercial,
+    Operacional, // Capacitación
+    Apoyo,
+    Administrativa
 }
