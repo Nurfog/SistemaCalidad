@@ -12,30 +12,39 @@ El proyecto incluye una interfaz de documentación premium basada en **Scalar**,
 
 - **URL de acceso local:** `http://localhost:5156/scalar/v1`
 - **Funcionalidades en línea:**
-    - Visualización de modelos de datos.
-    - Pruebas directas de endpoints (Try it out).
+    - Visualización de modelos de datos complejos.
+    - Pruebas directas de endpoints (Try it out) con soporte para JWT.
     - Generación de código de cliente en múltiples lenguajes (JS, Python, C#, etc.).
-    - Autenticación integrada.
+    - Autenticación integrada para pruebas de roles.
 
 ---
 
 ## 🛠️ Procesos Normativos Implementados
 
-### 1. Control de Documentos (Cláusula 4.2.3)
-Permite la gestión del ciclo de vida de la documentación del SGC (Manuales, Procedimientos, Instructivos).
-- **Versionamiento:** Creación automática de nuevas versiones, manteniendo el historial completo.
-- **Estados:** Manejo de estados: *Borrador, En Revisión, Aprobado y Obsoleto*.
-- **Trazabilidad:** Registro de quién creó, revisó y aprobó cada documento.
+### 1. Control de Documentos y Workflow (Cláusula 4.2.3)
+Gestión completa del ciclo de vida documental con flujo de aprobación formal.
+- **Flujo de Trabajo:**
+  - `Borrador`: Estado inicial al cargar un documento (Visible solo por Escritores/Admin).
+  - `En Revisión`: Solicitud formal de aprobación (`POST /solicitar-revision`).
+  - `Aprobado`: Publicación oficial del documento (`POST /aprobar`). Solo accesible por Administradores.
+- **Seguridad de Acceso:** Los usuarios con rol `Lector` están impedidos de ver o descargar documentos que no tengan el estado **Aprobado**.
+- **Notificaciones Automáticas:** Envío de correos electrónicos a Administradores y Encargados cuando se solicita una revisión o se aprueba un documento.
+- **Versionamiento:** Creación automática de nuevas versiones, manteniendo el historial completo de cambios.
+- **Documentos Externos:** Módulo para el control de normativas legales, manuales de equipos o reglamentos externos (Cláusula 4.2.3 f).
 
 ### 2. Control de Registros (Cláusula 4.2.4)
 Gestión de evidencias de la ejecución de procesos.
-- **Retención:** Configuración de años de retención obligatorios.
-- **Protección:** Registro de métodos de protección y respaldo de la información.
+- **Retención y Disposición:** Definición de periodos de almacenamiento obligatorios.
+- **Protección:** Control de acceso y respaldo de evidencia digital/física.
 
 ### 3. Mejora Continua (Cláusulas 8.3, 8.5.2, 8.5.3)
-Módulo para el tratamiento de fallas y oportunidades de mejora.
-- **No Conformidades:** Registro detallado de hallazgos con análisis de causa raíz.
-- **Acciones Correctivas:** Planificación de acciones con responsables y validación de eficacia.
+Tratamiento de No Conformidades (NC) y acciones de mejora.
+- **Registro de NC:** Hallazgos con clasificación de origen (Auditoría, Reclamos, MEP, etc.).
+- **Acciones Correctivas:** Planificación, ejecución y verificación de eficacia.
+
+### 4. Auditoría de Trazabilidad (Control de Operación)
+- **Logs de Acceso:** Registro inviolable de quién consultó o descargó cada documento, incluyendo IP y timestamp.
+- **Historial de Operaciones:** Auditoría de inicios de sesión, cambios de estado en documentos y aprobaciones.
 
 ---
 
@@ -43,42 +52,23 @@ Módulo para el tratamiento de fallas y oportunidades de mejora.
 
 El sistema utiliza un esquema de **Seguridad Híbrida** vinculado al sistema central `sige_sam_v3`.
 
-- **Autenticación Centralizada:** Valida identidad y contraseñas (PLANO/SHA-1) contra la base de datos central.
-- **Validación de Estado Automática:** Si un usuario es marcado como `activo = 0` en el sistema central, pierde el acceso a la API de calidad de forma **instantánea** (inclusive en sesiones activas).
-- **Roles y Permisos:**
-    - `Administrador`: Acceso total y gestión de permisos.
-    - `Escritor`: Permiso para crear y modificar documentos y acciones.
-    - `Lector`: Acceso de solo consulta a la documentación vigente.
+- **Autenticación Centralizada:** Valida identidad y contraseñas (PLANO/SHA-1) contra la tabla de usuarios central.
+- **Validación de Estado "Kill-Switch":** Un Middleware verifica en **tiempo real** el estado `activo = 1` del usuario. Si es desactivado en el sistema central, pierde el acceso a la API instantáneamente.
+- **Control de Acceso Basado en Roles (RBAC):**
+    - `Administrador`: Control total, aprobación de documentos y gestión de auditoría.
+    - `Escritor`: Carga de documentos, solicitud de revisión y gestión de No Conformidades.
+    - `Lector`: Solo consulta de documentos ya aprobados y vigentes.
 
 ---
 
-## 📂 Estructura del Código
+## 📂 Configuración del Proyecto
 
-- **`Controllers/`**: Endpoints RESTful organizados por dominio (Documentos, Registros, NoConformidades).
-- **`Models/`**: Entidades y Enums que reflejan la terminología de la norma NCh 2728.
-- **`Services/`**: Lógica de negocio, almacenamiento de archivos y autenticación.
-- **`Data/`**: Contexto de base de datos multi-schema (MySQL).
-
----
-
-## ⚙️ Configuración para Desarrolladores
-
-### Requisitos
-- SDK de .NET 9.0 o superior.
-- MySQL Server 8.0+.
-
-### Conexión a Base de Datos
-El sistema utiliza archivos de configuración según el entorno:
-1. `appsettings.Development.json`: Configurado para conectar a la base de datos de Desarrollo (**AWS EC2**).
-2. `appsettings.json`: Configurado para el entorno de Producción (**Localhost**).
-
-### Scripts de Inicialización
-En la raíz del proyecto se encuentran los scripts SQL necesarios para preparar la base de datos:
-- `script_creacion_bd.sql`: Estructura principal.
-- `script_fase2_mejora.sql`: Tablas de No Conformidades y Acciones.
-- `script_permisos_usuarios.sql`: Vinculación de usuarios y roles iniciales.
+### Control de Versiones (Git)
+- `.gitignore`: Excluye binarios, caches y carpetas de almacenamiento local.
+- `.gitattributes`: Normalización de finales de línea.
+- `Storage/.gitkeep`: Mantiene la carpeta de archivos en el repositorio.
 
 ---
 
 ## 📞 Soporte Técnico
-Desarrollado para el cumplimiento normativo riguroso y la eficiencia operativa.
+Arquitectura diseñada para superar auditorías de certificación SENCE y casas certificadoras.

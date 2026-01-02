@@ -44,6 +44,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 // CORS
 builder.Services.AddCors(options =>
