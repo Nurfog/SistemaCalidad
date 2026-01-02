@@ -24,9 +24,16 @@ public class AnexosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Anexo>>> GetAnexos()
+    public async Task<ActionResult<IEnumerable<Anexo>>> GetAnexos([FromQuery] string? buscar)
     {
-        return await _context.Anexos.ToListAsync();
+        var query = _context.Anexos.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(buscar))
+        {
+            query = query.Where(a => a.Nombre.Contains(buscar) || a.Codigo.Contains(buscar));
+        }
+
+        return await query.ToListAsync();
     }
 
     [Authorize(Roles = "Escritor,Administrador")]

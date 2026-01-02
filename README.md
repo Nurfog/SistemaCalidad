@@ -47,6 +47,10 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
 - **Logs de Acceso:** Registro inviolable de quién consultó o descargó cada documento, incluyendo IP y timestamp.
 - **Historial de Operaciones:** Auditoría de inicios de sesión, cambios de estado en documentos y aprobaciones.
 
+### 5. Buscador Avanzado (Eficiencia Operativa)
+- **Filtros Multi-parámetro:** Búsqueda instantánea de documentos por código, título, área de proceso, tipo de documento o estado de aprobación.
+- **Búsqueda en Registros y Anexos:** Filtrado rápido de evidencias y plantillas para soporte inmediato en auditorías.
+
 ---
 
 ## 🔐 Seguridad e Integración de Usuarios

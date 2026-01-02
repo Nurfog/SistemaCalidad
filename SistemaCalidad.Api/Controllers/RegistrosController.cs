@@ -23,9 +23,16 @@ public class RegistrosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RegistroCalidad>>> GetRegistros()
+    public async Task<ActionResult<IEnumerable<RegistroCalidad>>> GetRegistros([FromQuery] string? buscar)
     {
-        return await _context.RegistrosCalidad.ToListAsync();
+        var query = _context.RegistrosCalidad.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(buscar))
+        {
+            query = query.Where(r => r.Nombre.Contains(buscar) || r.Identificador.Contains(buscar));
+        }
+
+        return await query.ToListAsync();
     }
 
     [Authorize(Roles = "Escritor,Administrador")]

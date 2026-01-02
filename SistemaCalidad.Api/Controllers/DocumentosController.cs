@@ -27,11 +27,27 @@ public class DocumentosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Documento>>> GetDocumentos()
+    public async Task<ActionResult<IEnumerable<Documento>>> GetDocumentos(
+        [FromQuery] string? buscar, 
+        [FromQuery] TipoDocumento? tipo, 
+        [FromQuery] AreaProceso? area, 
+        [FromQuery] EstadoDocumento? estado)
     {
         var query = _context.Documentos.Include(d => d.Revisiones).AsQueryable();
 
-        // Si el usuario es Lector, solo puede ver documentos APROBADOS
+        // 1. Busqueda por texto (Código o Título)
+        if (!string.IsNullOrWhiteSpace(buscar))
+        {
+            query = query.Where(d => d.Codigo.Contains(buscar) || d.Titulo.Contains(buscar));
+        }
+
+        // 2. Filtros específicos
+        if (tipo.HasValue) query = query.Where(d => d.Tipo == tipo.Value);
+        if (area.HasValue) query = query.Where(d => d.Area == area.Value);
+        if (estado.HasValue) query = query.Where(d => d.Estado == estado.Value);
+
+        // 3. Seguridad: Si el usuario es Lector, solo puede ver documentos APROBADOS
+        // (E incluso si filtra por otro estado, la seguridad se impone)
         if (User.IsInRole("Lector") && !User.IsInRole("Administrador") && !User.IsInRole("Escritor"))
         {
             query = query.Where(d => d.Estado == EstadoDocumento.Aprobado);

@@ -35,8 +35,8 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [ ] **Tablero de Control (Dashboard):**
   - Alerta de documentos próximos a vencer o revisión anual.
   - Estadísticas de cumplimiento por área.
-- [ ] **Buscador Avanzado:**
-  - Filtrado por etiquetas, fechas y contenido.
+- [x] **Buscador Avanzado:**
+  - Filtrado por código, título, área, tipo y estado (Completado ✅).
 - [ ] **Exportación de Evidencia:**
   - Generación de reportes para auditorías externas.
 
