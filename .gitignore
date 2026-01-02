@@ -106,6 +106,8 @@ npm-debug.log
 yarn-error.log
 
 # Project specific
+.env
+.env.local
 SistemaCalidad.db
 SistemaCalidad.db-shm
 SistemaCalidad.db-wal

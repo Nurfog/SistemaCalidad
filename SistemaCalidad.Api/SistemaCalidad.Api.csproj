@@ -15,6 +15,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" Version="1.2.45" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.400.10" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
   </ItemGroup>
 
 </Project>

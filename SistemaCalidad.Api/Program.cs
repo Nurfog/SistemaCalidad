@@ -5,8 +5,32 @@ using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Amazon.S3;
+using Amazon.Extensions.NETCore.Setup;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Cargar variables desde .env al entorno del proceso
+DotNetEnv.Env.Load();
+
+// Reemplazar placeholders en la configuración con variables de entorno reales
+var configuracionDict = new Dictionary<string, string>();
+var envVars = Environment.GetEnvironmentVariables();
+
+foreach (System.Collections.DictionaryEntry envVar in envVars)
+{
+    string key = envVar.Key.ToString()!;
+    string value = envVar.Value?.ToString() ?? "";
+
+    foreach (var config in builder.Configuration.AsEnumerable())
+    {
+        if (config.Value != null && config.Value.Contains("{" + key + "}"))
+        {
+            configuracionDict[config.Key] = config.Value.Replace("{" + key + "}", value);
+        }
+    }
+}
+builder.Configuration.AddInMemoryCollection(configuracionDict!);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -41,10 +65,33 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // File Storage Service
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
+var useS3 = builder.Configuration.GetValue<bool>("FileStorage:UseS3");
+if (useS3)
+{
+    // Configurar AWS SDK
+    var awsOptions = builder.Configuration.GetAWSOptions();
+    awsOptions.Region = Amazon.RegionEndpoint.GetBySystemName(builder.Configuration["FileStorage:S3:Region"]);
+    awsOptions.Credentials = new Amazon.Runtime.BasicAWSCredentials(
+        builder.Configuration["FileStorage:S3:AccessKey"], 
+        builder.Configuration["FileStorage:S3:SecretKey"]);
+    
+    builder.Services.AddDefaultAWSOptions(awsOptions);
+    builder.Services.AddAWSService<IAmazonS3>();
+    builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
+    Console.WriteLine($"💾 Almacenamiento configurado en: Amazon S3 (Bucket: {builder.Configuration["FileStorage:S3:BucketName"]}, Region: {awsOptions.Region.SystemName})");
+}
+else
+{
+    builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+    Console.WriteLine("💾 Almacenamiento configurado en: Local (Carpeta Storage)");
+}
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IReporteService, ReporteService>();
 
 // CORS
 builder.Services.AddCors(options =>

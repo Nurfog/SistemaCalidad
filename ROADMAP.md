@@ -31,16 +31,18 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] **Gestión de Anexos:**
   - Módulo específico para plantillas de anexos normativos (Completado ✅).
 
-## 🟩 Fase 4: Reportabilidad y UX
-- [ ] **Tablero de Control (Dashboard):**
+## 🟩 Fase 4: Reportabilidad y UX (Completado ✅)
+- [x] **Tablero de Control (Dashboard):**
   - Alerta de documentos próximos a vencer o revisión anual.
-  - Estadísticas de cumplimiento por área.
+  - Estadísticas de cumplimiento por área (Completado ✅).
 - [x] **Buscador Avanzado:**
   - Filtrado por código, título, área, tipo y estado (Completado ✅).
-- [ ] **Exportación de Evidencia:**
-  - Generación de reportes para auditorías externas.
+- [x] **Exportación de Evidencia:**
+  - Generación de reportes CSV (Listado Maestro y NC) para auditorías externas (Completado ✅).
 
-## 🚀 Fase 5: Integración y Nube
-- [ ] Soporte para Azure Blob Storage / AWS S3.
-- [ ] Dockerización de la API.
+## 🚀 Fase 5: Integración y Nube (En Progreso 🚧)
+- [x] **Soporte para Amazon S3:**
+  - Integración nativa con Amazon SDK.
+  - Auto-creación de Bucket desde la API (Completado ✅).
 - [ ] Integración con sistemas de gestión de aprendizaje (LMS).
+- [ ] Dockerización de la API (Diferido).

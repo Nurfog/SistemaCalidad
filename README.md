@@ -51,6 +51,10 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
 - **Filtros Multi-parámetro:** Búsqueda instantánea de documentos por código, título, área de proceso, tipo de documento o estado de aprobación.
 - **Búsqueda en Registros y Anexos:** Filtrado rápido de evidencias y plantillas para soporte inmediato en auditorías.
 
+### 6. Dashboard Normativo y Reportes (Fase 4)
+- **Tablero de Control:** Visualización de estadísticas de cumplimiento: documentos por área, estado de aprobación y alertas de documentos con revisión anual vencida.
+- **Exportación de Evidencia:** Generación de reportes en formato CSV del "Listado Maestro de Documentos" y "Registro de No Conformidades", listos para ser presentados ante auditores externos de SENCE o certificadoras.
+
 ---
 
 ## 🔐 Seguridad e Integración de Usuarios
@@ -63,6 +67,17 @@ El sistema utiliza un esquema de **Seguridad Híbrida** vinculado al sistema cen
     - `Administrador`: Control total, aprobación de documentos y gestión de auditoría.
     - `Escritor`: Carga de documentos, solicitud de revisión y gestión de No Conformidades.
     - `Lector`: Solo consulta de documentos ya aprobados y vigentes.
+
+---
+
+## ☁️ Almacenamiento en la Nube (Amazon S3)
+
+El sistema soporta almacenamiento híbrido. Puede conmutar entre almacenamiento local o Amazon S3 mediante configuración:
+
+- **Configuración en `appsettings.json`:**
+  - `UseS3`: Establecer en `true` para activar AWS.
+  - `BucketName`: El sistema intentará crear el bucket automáticamente si no existe.
+  - `Region`, `AccessKey`, `SecretKey`: Credenciales de IAM con permisos de lectura/escritura en S3.
 
 ---
 
@@ -79,12 +94,24 @@ El sistema utiliza un esquema de **Seguridad Híbrida** vinculado al sistema cen
 - MySQL Server 8.0+.
 
 ### Scripts de Inicialización SQL
-Para dejar el sistema operativo, ejecute estos scripts en su MySQL en el siguiente orden:
-1. `script_creacion_bd.sql`: Estructura núcleo del sistema.
-2. `script_fase2_mejora.sql`: Módulo de No Conformidades y Acciones.
-3. `script_permisos_usuarios.sql`: Vinculación con usuarios externos y roles.
-4. `script_fase3_auditoria.sql`: Trazabilidad y Documentos Externos.
-5. `script_anexos_plantillas.sql`: Gestión de Anexos y Plantillas base de la norma.
+Para dejar el sistema operativo de forma rápida, ejecute el siguiente script en su MySQL:
+1. `script_base_datos_completo.sql`: Crea toda la estructura (Fase 1-4), asigna administradores y carga plantillas base.
+
+*Nota: Los scripts individuales de cada fase permanecen en el repositorio solo como referencia histórica.*
+
+---
+
+## 🚀 Despliegue en Windows Server
+
+El proyecto incluye un script de automatización para servidores Windows con **IIS**:
+
+### Uso del Script de Publicación
+1. Ejecute `publicar_y_subir.ps1` desde PowerShell.
+2. El script compilará la versión final y solicitará credenciales FTP para subir los archivos.
+
+### Requisitos en el Servidor
+- **.NET 9 Hosting Bundle:** Debe estar instalado para habilitar el soporte de ASP.NET Core en IIS.
+- **Configuración de IIS:** Cree un nuevo sitio web apuntando a la carpeta de destino y asegúrese de que el AppPool esté en modo **"No Managed Code"**.
 
 ---
 
