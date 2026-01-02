@@ -15,11 +15,13 @@ public class DocumentosController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IFileStorageService _fileService;
+    private readonly IAuditoriaService _auditoria;
 
-    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService)
+    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria)
     {
         _context = context;
         _fileService = fileService;
+        _auditoria = auditoria;
     }
 
     [HttpGet]
@@ -110,6 +112,9 @@ public class DocumentosController : ControllerBase
         if (versionVigente == null) return NotFound("No se encontró una versión activa.");
 
         var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
+        
+        await _auditoria.RegistrarAccionAsync("DESCARGA", "Documento", id, $"Descargó {versionVigente.NombreArchivo} (v{versionVigente.NumeroVersion})");
+        
         return File(datosArchivo.Content, datosArchivo.ContentType, versionVigente.NombreArchivo);
     }
 }

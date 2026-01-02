@@ -17,6 +17,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<AccionCalidad> AccionesCalidad { get; set; }
     public DbSet<UsuarioExterno> UsuariosExternos { get; set; }
     public DbSet<UsuarioPermiso> UsuariosPermisos { get; set; }
+    public DbSet<AuditoriaAcceso> AuditoriaAccesos { get; set; }
+    public DbSet<DocumentoExterno> DocumentosExternos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
