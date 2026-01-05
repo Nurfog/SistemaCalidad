@@ -5,7 +5,10 @@ namespace SistemaCalidad.Api.Controllers;
 
 public class LoginRequest
 {
+    [System.Text.Json.Serialization.JsonPropertyName("usuario")]
     public string Usuario { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("password")]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -23,27 +26,36 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var result = await _authService.LoginAsync(request.Usuario, request.Password);
-
-        if (!result.Success)
+        try 
         {
-            if (result.Token == "SIN_PERMISO")
-                return Forbidden("No tienes permisos asignados para acceder a la plataforma de Calidad.");
+            Console.WriteLine($"[LOGIN] Intento de acceso - Usuario: {request.Usuario}");
             
-            return Unauthorized("Usuario o contraseña incorrectos.");
+            var (success, token, rol, usuario) = await _authService.LoginAsync(request.Usuario, request.Password);
+
+            if (!success)
+            {
+                Console.WriteLine($"[LOGIN] Falla: {token ?? "Credenciales incorrectas"}");
+                
+                if (token == "SIN_PERMISO")
+                    return BadRequest(new { mensaje = "El usuario no tiene permisos para acceder a este sistema." });
+                
+                if (token == "CUENTA_DESACTIVADA")
+                    return BadRequest(new { mensaje = "La cuenta de usuario está desactivada." });
+
+                return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
+            }
+
+            Console.WriteLine($"[LOGIN] Éxito - Usuario: {usuario}, Rol: {rol}");
+            return Ok(new { token, rol, usuario });
         }
-
-        return Ok(new
+        catch (Exception ex)
         {
-            usuario = result.Usuario,
-            rol = result.Rol,
-            mensaje = $"Bienvenido al Sistema de Calidad (Modo {result.Rol})",
-            token = result.Token
-        });
-    }
-
-    private IActionResult Forbidden(string message)
-    {
-        return StatusCode(403, new { mensaje = message });
+            return StatusCode(500, new { 
+                mensaje = "Error interno del servidor", 
+                detalle = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stack = ex.StackTrace 
+            });
+        }
     }
 }

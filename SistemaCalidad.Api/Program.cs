@@ -63,6 +63,12 @@ Console.WriteLine($"Iniciando en modo: {(builder.Environment.IsDevelopment() ? "
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddMySql(connectionString!, name: "Base de Datos");
+// Nota: S3 Health check se puede agregar con paquetes adicionales, 
+// por ahora usaremos una validación custom en el controlador de status.
+
 // File Storage Service
 builder.Services.AddHttpContextAccessor();
 
@@ -109,7 +115,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // Dashboard Premium para probar la API
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Comentado para evitar problemas de CORS en localhost con HTTP
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseMiddleware<UserStatusMiddleware>(); // Validación de estado en tiempo real

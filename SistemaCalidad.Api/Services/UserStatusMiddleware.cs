@@ -24,9 +24,11 @@ public class UserStatusMiddleware
             if (!string.IsNullOrEmpty(username))
             {
                 // Consultamos directamente el estado en el origen
+                // Consultamos directamente el estado en el origen (sige_sam_v3)
                 var user = await dbContext.UsuariosExternos
-                    .AsNoTracking() // Optimización: Solo lectura rápida
-                    .FirstOrDefaultAsync(u => u.usuario == username);
+                    .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
 
                 // Si el usuario no existe o activo != 1, bloqueamos la petición inmediatamente
                 if (user == null || user.activo != 1)

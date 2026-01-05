@@ -47,5 +47,13 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<NoConformidad>()
             .HasIndex(nc => nc.Folio)
             .IsUnique();
+
+        // Mapeo Cross-Database (Schemas en MySQL)
+        // Pomelo interpreta el 'schema' como el nombre de la otra base de datos
+        modelBuilder.Entity<UsuarioExterno>()
+            .ToTable("usuario", "sige_sam_v3");
+
+        modelBuilder.Entity<UsuarioPermiso>()
+            .ToTable("usuariospermisos", "sistemacalidad_nch2728");
     }
 }

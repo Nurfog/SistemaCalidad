@@ -27,36 +27,61 @@ public class AuthService : IAuthService
 
     public async Task<(bool Success, string Token, string Rol, string Usuario)> LoginAsync(string username, string password)
     {
-        // 1. Buscar el usuario en el schema externo sige_sam_v3
+        username = username.Trim();
+        password = password.Trim();
+        // 1. Buscar el usuario en el schema externo sige_sam_v3 utilizando idUsuario (RUT)
+        // Seleccionamos campos específicos para evitar conflictos con columnas que no conocemos
         var usuarioExterno = await _context.UsuariosExternos
-            .FirstOrDefaultAsync(u => u.usuario == username);
+            .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
+            .FirstOrDefaultAsync();
 
-        if (usuarioExterno == null) return (false, "", "", "");
+        if (usuarioExterno == null) 
+        {
+            Console.WriteLine($"[AUTH] Usuario {username} no encontrado en sige_sam_v3.usuario");
+            return (false, "", "", "");
+        }
 
         // 2. Verificar estado activo (1=Activo, 0=Inactivo)
-        if (usuarioExterno.activo != 1) return (false, "CUENTA_DESACTIVADA", "", "");
+        if (usuarioExterno.activo != 1) 
+        {
+            Console.WriteLine($"[AUTH] Usuario {username} desactivado (Activo={usuarioExterno.activo})");
+            return (false, "CUENTA_DESACTIVADA", "", "");
+        }
 
         // 3. Verificar password (Texto plano o SHA-1)
         bool isPasswordValid = false;
         
         if (usuarioExterno.password.Length > 20)
         {
-            // Es un hash SHA-1
-            isPasswordValid = VerifySha1(password, usuarioExterno.password);
+            // Es un hash SHA-256
+            isPasswordValid = VerifySha256(password, usuarioExterno.password);
+            Console.WriteLine($"[AUTH] Verificando SHA256 para {username}: {isPasswordValid}");
         }
         else
         {
             // Es texto plano
             isPasswordValid = (password == usuarioExterno.password);
+            Console.WriteLine($"[AUTH] Verificando Texto Plano para {username}: {isPasswordValid}");
         }
 
         if (!isPasswordValid) return (false, "", "", "");
 
         // 3. Verificar si tiene permiso en el sistema de Calidad
-        var permiso = await _context.UsuariosPermisos
-            .FirstOrDefaultAsync(p => p.UsuarioIdExterno == usuarioExterno.id && p.Activo);
+        // Convertimos el idUsuario (string en SIGE) a int para comparar con nuestra tabla (INT)
+        if (!int.TryParse(usuarioExterno.idUsuario, out int idInt))
+        {
+            Console.WriteLine($"[AUTH] Error al convertir RUT {usuarioExterno.idUsuario} a entero para búsqueda de permisos.");
+            return (false, "ERROR_SISTEMA", "", "");
+        }
 
-        if (permiso == null) return (false, "SIN_PERMISO", "", "");
+        var permiso = await _context.UsuariosPermisos
+            .FirstOrDefaultAsync(p => p.UsuarioIdExterno == idInt && p.Activo);
+
+        if (permiso == null) 
+        {
+            Console.WriteLine($"[AUTH] Usuario {username} (ID: {idInt}) no tiene permisos en sistemacalidad_nch2728");
+            return (false, "SIN_PERMISO", "", "");
+        }
 
         // 4. Generar Token JWT Real
         var token = GenerateJwtToken(usuarioExterno.usuario, permiso.Rol);
@@ -91,14 +116,18 @@ public class AuthService : IAuthService
         return tokenHandler.WriteToken(securityToken);
     }
 
-    private bool VerifySha1(string input, string hash)
+    private bool VerifySha256(string input, string hash)
     {
-        using var sha1 = SHA1.Create();
-        var bytes = sha1.ComputeHash(Encoding.UTF8.GetBytes(input));
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
         var sb = new StringBuilder();
         foreach (var b in bytes) sb.Append(b.ToString("x2"));
         
+        var inputHash = sb.ToString();
+        Console.WriteLine($"[AUTH] Generado: {inputHash}");
+        Console.WriteLine($"[AUTH] En Base:  {hash}");
+
         // Comparamos el hash generado con el guardado (case insensitive)
-        return sb.ToString().Equals(hash, StringComparison.OrdinalIgnoreCase);
+        return inputHash.Equals(hash, StringComparison.OrdinalIgnoreCase);
     }
 }

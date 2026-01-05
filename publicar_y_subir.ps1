@@ -1,4 +1,4 @@
-# SCRIPT DE PUBLICACIÓN AUTOMATIZADA API SISTEMA CALIDAD
+# SCRIPT DE PUBLICACION AUTOMATIZADA API SISTEMA CALIDAD (MODO FTP)
 # Requisitos: Tener instalado el SDK de .NET 9
 
 Write-Host "----------------------------------------------------" -ForegroundColor Cyan
@@ -8,65 +8,84 @@ Write-Host "----------------------------------------------------" -ForegroundCol
 $proyectoDir = "d:\mio\DEV\SistemaCalidad\SistemaCalidad.Api"
 $publicacionDir = "d:\mio\DEV\SistemaCalidad\publish"
 
-# 1. Limpiar y Publicar
-if (Test-Path $publicacionDir) { Remove-Item -Recurse -Force $publicacionDir }
-Write-Host "📦 Compilando y publicando en modo Release..." -ForegroundColor Yellow
+# --- CONFIGURACION FIJA DEL SERVIDOR ---
+$ftpServerBase = "ftp://norteamericano.com/SistemaCalidad"
+$ftpUser       = "desarrollo"
+# ---------------------------------------
 
+# 1. Limpiar y Publicar
+if (Test-Path $publicacionDir) { 
+    Write-Host "🧹 Limpiando carpeta de publicación anterior..." -ForegroundColor Gray
+    Remove-Item -Recurse -Force $publicacionDir 
+}
+
+Write-Host "📦 Compilando y publicando en modo Release..." -ForegroundColor Yellow
 Set-Location $proyectoDir
-dotnet publish -c Release -o $publicacionDir
+dotnet publish -c Release -o $publicacionDir /p:PublishReadyToRun=false /p:PublishSingleFile=false
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Error en la compilación. Abortando." -ForegroundColor Red
     exit
 }
 
-Write-Host "✅ Publicación local generada en $publicacionDir" -ForegroundColor Green
+Write-Host "✅ Publicación local generada correctamente." -ForegroundColor Green
 
-# --- NUEVO: Copiar el archivo .env a la carpeta de publicación ---
+# 2. Copiar el archivo .env a la carpeta de publicación
 if (Test-Path "$proyectoDir\.env") {
-    Write-Host "🔐 Incluyendo archivo .env en la publicación..." -ForegroundColor Cyan
+    Write-Host "🔐 Incluyendo archivo .env en el paquete de subida..." -ForegroundColor Cyan
     Copy-Item "$proyectoDir\.env" -Destination "$publicacionDir\.env" -Force
 }
-# -----------------------------------------------------------------
 
-# 2. Datos de Conexion FTP
+# 3. Pedir Contraseña
 Write-Host "`n----------------------------------------------------"
-Write-Host "🌐 Configuracion de Servidor FTP (Windows Server)"
+Write-Host "🌐 Autenticando para: $ftpServerBase"
+Write-Host "👤 Usuario: $ftpUser"
 Write-Host "----------------------------------------------------"
-$ftpHost = Read-Host "Ingrese la Ip o Host (ej: calidad.norteamericano.cl)"
-$ftpUser = Read-Host "Ingrese el Usuario FTP"
-$ftpPass = Read-Host "Ingrese la Contrasena FTP" -AsSecureString
-
-# Asegurar que la URL tenga el formato ftp://
-if (-not $ftpHost.StartsWith("ftp://")) { $ftpServer = "ftp://$ftpHost" } else { $ftpServer = $ftpHost }
+$ftpPass = Read-Host "Ingrese Contrasena para el usuario $ftpUser" -AsSecureString
 
 # Convertir password
 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($ftpPass)
 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
 
-# 3. Subir archivos
-Write-Host "`n🚚 Subiendo archivos al servidor..." -ForegroundColor Yellow
-
-$webClient = New-Object System.Net.WebClient
-$webClient.Proxy = $null # Evita problemas de lentitud con proxys
-$webClient.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+# 4. Subir archivos
+Write-Host "`n🚚 Iniciando transferencia de archivos (Modo Pasivo)..." -ForegroundColor Yellow
 
 $archivos = Get-ChildItem -Path $publicacionDir -Recurse | Where-Object { ! $_.PSIsContainer }
+$total = $archivos.Count
+$actual = 0
 
 foreach ($archivo in $archivos) {
-    $rutaRelativa = $archivo.FullName.Replace($physicalPath_local, "").Replace($publicacionDir, "").Replace("\", "/")
-    $ftpDestino = "$ftpServer/$rutaRelativa".Replace("//", "/")
+    $actual++
+    $nombreRelativo = $archivo.FullName.Substring($publicacionDir.Length + 1).Replace("\", "/")
+    $urlDestino = ($ftpServerBase.TrimEnd('/') + "/" + $nombreRelativo)
     
-    Write-Host "📤 Enviando: $rutaRelativa ..." -ForegroundColor Gray
+    Write-Host "[$actual/$total] 📤 Enviando: $nombreRelativo ..." -ForegroundColor Gray
     try {
-        $uri = New-Object System.Uri($ftpDestino)
-        $webClient.UploadFile($uri, "STOR", $archivo.FullName)
+        $uri = [System.Uri]$urlDestino
+        $request = [System.Net.FtpWebRequest]::Create($uri)
+        $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+        $request.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
+        $request.UsePassive = $true  # <--- Crucial para evitar errores de conexión
+        $request.UseBinary = $true
+        $request.KeepAlive = $false
+
+        $fileBytes = [System.IO.File]::ReadAllBytes($archivo.FullName)
+        $request.ContentLength = $fileBytes.Length
+        
+        $requestStream = $request.GetRequestStream()
+        $requestStream.Write($fileBytes, 0, $fileBytes.Length)
+        $requestStream.Close()
+        $requestStream.Dispose()
+        
+        $response = $request.GetResponse()
+        $response.Close()
+        $response.Dispose()
     } catch {
-        Write-Host "?? Error en $rutaRelativa : $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "❌ Error en $nombreRelativo : $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
 Write-Host "`n----------------------------------------------------"
-Write-Host "🎉 ¡PROCESO FINALIZADO!" -ForegroundColor Green
-Write-Host "Los archivos han sido cargados. Recuerde configurar el sitio en IIS en Windows Server."
+Write-Host "🎉 ¡DESPLIEGUE FINALIZADO EN EL SERVIDOR!" -ForegroundColor Green
+Write-Host "URL Base: $ftpServerBase"
 Write-Host "----------------------------------------------------"

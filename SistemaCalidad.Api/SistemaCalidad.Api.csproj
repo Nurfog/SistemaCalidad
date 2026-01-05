@@ -18,6 +18,7 @@
     <PackageReference Include="AWSSDK.S3" Version="3.7.400.10" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

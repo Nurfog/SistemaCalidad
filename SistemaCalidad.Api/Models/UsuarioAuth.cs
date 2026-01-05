@@ -3,27 +3,31 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SistemaCalidad.Api.Models;
 
-// Representa la tabla en el otro schema
-[Table("usuarios", Schema = "sige_sam_v3")]
+// Representa la tabla en el otro schema (Base de Datos externa)
+[Table("usuario")]
 public class UsuarioExterno
 {
     [Key]
-    public int id { get; set; }
+    [Column("idUsuario")]
+    public string idUsuario { get; set; } = string.Empty;
+
+    [NotMapped]
+    public string usuario => idUsuario; // El RUT ya es el usuario (string)
 
     [Required]
-    public string usuario { get; set; } = string.Empty;
-
-    [Required]
+    [Column("Contrasena")]
     public string password { get; set; } = string.Empty;
 
+    [Column("Email")]
     public string? email { get; set; } = string.Empty;
 
     [Required]
+    [Column("Activo")]
     public int activo { get; set; } // 1 para activo, 0 para inactivo
 }
 
 // Representa los permisos en nuestro schema
-[Table("UsuariosPermisos", Schema = "sistemacalidad_nch2728")]
+[Table("usuariospermisos")]
 public class UsuarioPermiso
 {
     [Key]

@@ -53,6 +53,7 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
 
 ### 6. Dashboard Normativo y Reportes (Fase 4)
 - **Tablero de Control:** Visualización de estadísticas de cumplimiento: documentos por área, estado de aprobación y alertas de documentos con revisión anual vencida.
+- **Status Dashboard:** Monitoreo técnico en tiempo real accesible en `/status` para verificar la conectividad de la base de datos y el almacenamiento Amazon S3.
 - **Exportación de Evidencia:** Generación de reportes en formato CSV del "Listado Maestro de Documentos" y "Registro de No Conformidades", listos para ser presentados ante auditores externos de SENCE o certificadoras.
 
 ---

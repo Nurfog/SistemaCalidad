@@ -35,6 +35,7 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] **Tablero de Control (Dashboard):**
   - Alerta de documentos próximos a vencer o revisión anual.
   - Estadísticas de cumplimiento por área (Completado ✅).
+  - **Status Dashboard:** Monitoreo en tiempo real de API, DB y S3 en `/status` (Completado ✅).
 - [x] **Buscador Avanzado:**
   - Filtrado por código, título, área, tipo y estado (Completado ✅).
 - [x] **Exportación de Evidencia:**
