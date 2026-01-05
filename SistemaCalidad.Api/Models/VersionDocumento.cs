@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SistemaCalidad.Api.Models;
 
@@ -12,6 +13,7 @@ public class VersionDocumento
     public int DocumentoId { get; set; }
     
     [ForeignKey("DocumentoId")]
+    [JsonIgnore]
     public virtual Documento Documento { get; set; } = null!;
 
     public int NumeroVersion { get; set; }

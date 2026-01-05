@@ -31,19 +31,25 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] **Gestión de Anexos:**
   - Módulo específico para plantillas de anexos normativos (Completado ✅).
 
-## 🟩 Fase 4: Reportabilidad y UX (Completado ✅)
+## 🟩 Fase 4: Reportabilidad y Frontend (Completado ✅)
 - [x] **Tablero de Control (Dashboard):**
   - Alerta de documentos próximos a vencer o revisión anual.
-  - Estadísticas de cumplimiento por área (Completado ✅).
-  - **Status Dashboard:** Monitoreo en tiempo real de API, DB y S3 en `/status` (Completado ✅).
-- [x] **Buscador Avanzado:**
-  - Filtrado por código, título, área, tipo y estado (Completado ✅).
-- [x] **Exportación de Evidencia:**
-  - Generación de reportes CSV (Listado Maestro y NC) para auditorías externas (Completado ✅).
+  - Estadísticas de cumplimiento por área.
+- [x] **Cliente Web (React):**
+  - Sistema de Login vinculado a base externa.
+  - Interfaz de Dashboard con gráficas funcionales.
+  - Listado Maestro de Documentos con filtros.
+- [x] **Status Dashboard:** Monitoreo en tiempo real de API, DB y S3 en `/status`.
 
-## 🚀 Fase 5: Integración y Nube (En Progreso 🚧)
-- [x] **Soporte para Amazon S3:**
-  - Integración nativa con Amazon SDK.
-  - Auto-creación de Bucket desde la API (Completado ✅).
-- [ ] Integración con sistemas de gestión de aprendizaje (LMS).
-- [ ] Dockerización de la API (Diferido).
+## 🚀 Fase 5: Expansión de Módulos (En Progreso 🚧)
+- [ ] **Funcionalidad Completa:**
+  - Flujo de aprobación de documentos (Revisión -> Aprobación).
+  - Módulos de No Conformidades y Acciones de Calidad.
+  - Gestión de Registros y Evidencias.
+  - Panel de Anexos y Plantillas Maestras.
+- [ ] **Integración Cloud:**
+  - Consolidación del almacenamiento en Amazon S3.
+
+## 📄 Documentación (Nueva ✅)
+- [x] **Manual de Usuario:** Guía visual para el personal administrativo.
+- [x] **README Técnico:** Instrucciones de despliegue y desarrollo.

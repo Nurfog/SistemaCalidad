@@ -1,16 +1,24 @@
-# React + Vite
+# SGC - Sistema de Gestión de Calidad (Frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este es el cliente web para el Sistema de Gestión de Calidad basado en la norma **NCh 2728:2015**. Desarrollado con **React + Vite** y diseñado con una estética premium basada en Vanilla CSS.
 
-Currently, two official plugins are available:
+## 🚀 Características Implementadas
+- **Autenticación Centralizada:** Conexión segura con el sistema `sige_sam_v3`.
+- **Dashboard Normativo:** Visualización de indicadores clave y alertas de revisión.
+- **Gestión Documental:** Listado maestro con filtros avanzados y flujos de aprobación.
+- **Diseño Responsivo:** Adaptado para una experiencia fluida en escritorio y dispositivos móviles.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠️ Tecnologías
+- **Core:** React 18
+- **Build Tool:** Vite
+- **Estilos:** Vanilla CSS (Custom Properties + Flexbox/Grid)
+- **Iconografía:** Lucide React
+- **API Client:** Axios
 
-## React Compiler
+## 📦 Instalación y Desarrollo
+1. Entrar a la carpeta del frontend: `cd frontend`
+2. Instalar dependencias: `npm install`
+3. Iniciar entorno de desarrollo: `npm run dev`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📄 Manual de Usuario
+Para una guía detallada sobre cómo operar el sistema, consulte el archivo [usermanual.md](./usermanual.md).

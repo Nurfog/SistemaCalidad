@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace SistemaCalidad.Api.Models;
 
@@ -62,6 +63,7 @@ public class AccionCalidad
     public int NoConformidadId { get; set; }
     
     [ForeignKey("NoConformidadId")]
+    [JsonIgnore]
     public virtual NoConformidad NoConformidad { get; set; } = null!;
 
     [Required]
