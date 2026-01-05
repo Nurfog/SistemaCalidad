@@ -8,7 +8,11 @@ using System.Text;
 using Amazon.S3;
 using Amazon.Extensions.NETCore.Setup;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = "frontend_app" // Carpeta personalizada para el Frontend (evita conflicto con wwwroot del servidor)
+});
 
 // Cargar variables desde .env al entorno del proceso
 DotNetEnv.Env.Load();
@@ -120,7 +124,15 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseMiddleware<UserStatusMiddleware>(); // Validación de estado en tiempo real
 app.UseAuthorization();
+
+// Servir archivos estáticos (Frontend React)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
+
+// Fallback para SPA (Cualquier ruta que no sea API va a index.html)
+app.MapFallbackToFile("index.html");
 
 // La base de datos se maneja manualmente via scripts SQL
 

@@ -30,10 +30,35 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "✅ Publicación local generada correctamente." -ForegroundColor Green
 
+# 1.1 Compilar Frontend (React)
+$frontendDir = "d:\mio\DEV\SistemaCalidad\frontend"
+if (Test-Path $frontendDir) {
+    Write-Host "⚛️ Compilando Frontend (React)..." -ForegroundColor Magenta
+    Set-Location $frontendDir
+    # npm install # Descomentar si es la primera vez o hay nuevas dependencias
+    npm run build
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Error al compilar el Frontend. Abortando." -ForegroundColor Red
+        exit
+    }
+    
+    # 1.2 Copiar Frontend a carpeta personalizada (frontend_app) de la publicación API
+    $webRootDir = "$publicacionDir\frontend_app"
+    if (!(Test-Path $webRootDir)) { New-Item -ItemType Directory -Force -Path $webRootDir | Out-Null }
+    
+    Write-Host "📂 Copiando archivos del Frontend a $webRootDir ..." -ForegroundColor Cyan
+    Copy-Item "$frontendDir\dist\*" -Destination $webRootDir -Recurse -Force
+}
+
 # 2. Copiar el archivo .env a la carpeta de publicación
 if (Test-Path "$proyectoDir\.env") {
     Write-Host "🔐 Incluyendo archivo .env en el paquete de subida..." -ForegroundColor Cyan
     Copy-Item "$proyectoDir\.env" -Destination "$publicacionDir\.env" -Force
+    
+    # 2.1 Forzar entorno de Producción en el archivo subido
+    Write-Host "⚙️ Ajustando entorno a PRODUCCIÓN..." -ForegroundColor Cyan
+    (Get-Content "$publicacionDir\.env") -replace "ASPNETCORE_ENVIRONMENT=Development", "ASPNETCORE_ENVIRONMENT=Production" | Set-Content "$publicacionDir\.env"
 }
 
 # 3. Pedir Contraseña
@@ -47,8 +72,29 @@ $ftpPass = Read-Host "Ingrese Contrasena para el usuario $ftpUser" -AsSecureStri
 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($ftpPass)
 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
 
-# 4. Subir archivos
-Write-Host "`n🚚 Iniciando transferencia de archivos (Modo Pasivo)..." -ForegroundColor Yellow
+# 4.1 Crear estructura de carpetas primero
+Write-Host "`n📁 Verificando/Creando estructura de carpetas en el servidor..." -ForegroundColor Yellow
+$directorios = Get-ChildItem -Path $publicacionDir -Recurse | Where-Object { $_.PSIsContainer } | Sort-Object FullName
+
+foreach ($dir in $directorios) {
+    $relPath = $dir.FullName.Substring($publicacionDir.Length + 1).Replace("\", "/")
+    $dirUrl = ($ftpServerBase.TrimEnd('/') + "/" + $relPath)
+    
+    try {
+        $uri = [System.Uri]$dirUrl
+        $request = [System.Net.FtpWebRequest]::Create($uri)
+        $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+        $request.Method = [System.Net.WebRequestMethods+Ftp]::MakeDirectory
+        $request.GetResponse().Close()
+        Write-Host "➕ Carpeta creada: $relPath" -ForegroundColor DarkGray
+    } catch {
+        # Ignoramos error 550 (Carpeta ya existe)
+        # Write-Host "ℹ️ Carpeta ya existe: $relPath" -ForegroundColor DarkGray
+    }
+}
+
+# 4.2 Subir archivos
+Write-Host "`n🚚 Iniciando transferencia de archivos..." -ForegroundColor Yellow
 
 $archivos = Get-ChildItem -Path $publicacionDir -Recurse | Where-Object { ! $_.PSIsContainer }
 $total = $archivos.Count
@@ -65,9 +111,10 @@ foreach ($archivo in $archivos) {
         $request = [System.Net.FtpWebRequest]::Create($uri)
         $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
         $request.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
-        $request.UsePassive = $true  # <--- Crucial para evitar errores de conexión
+        $request.UsePassive = $true
         $request.UseBinary = $true
         $request.KeepAlive = $false
+        $request.Timeout = 30000 # 30 segundos timeout
 
         $fileBytes = [System.IO.File]::ReadAllBytes($archivo.FullName)
         $request.ContentLength = $fileBytes.Length

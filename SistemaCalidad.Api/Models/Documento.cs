@@ -31,4 +31,10 @@ public class Documento
 
     // Propiedad de navegación para las versiones
     public virtual ICollection<VersionDocumento> Revisiones { get; set; } = new List<VersionDocumento>();
+
+    // Relación con Carpetas
+    public int? CarpetaDocumentoId { get; set; }
+
+    [ForeignKey("CarpetaDocumentoId")]
+    public CarpetaDocumento? Carpeta { get; set; }
 }

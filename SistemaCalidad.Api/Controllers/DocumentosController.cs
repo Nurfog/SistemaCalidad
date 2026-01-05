@@ -31,9 +31,19 @@ public class DocumentosController : ControllerBase
         [FromQuery] string? buscar, 
         [FromQuery] TipoDocumento? tipo, 
         [FromQuery] AreaProceso? area, 
-        [FromQuery] EstadoDocumento? estado)
+        [FromQuery] EstadoDocumento? estado,
+        [FromQuery] int? carpetaId) // Filtro por carpeta
     {
         var query = _context.Documentos.Include(d => d.Revisiones).AsQueryable();
+
+        // 0. Filtro por Carpeta (Si se envía null, se asume raíz o todos?
+        // Usualmente para navegar: si carpetaId es null, traer docs sin carpeta (o de raiz)
+        // Pero para búsquedas globales se podría ignorar.
+        // Haremos lógica de navegación: Si no hay termino de busqueda 'buscar', filtramos por carpeta.
+        if (string.IsNullOrWhiteSpace(buscar))
+        {
+            query = query.Where(d => d.CarpetaDocumentoId == carpetaId);
+        }
 
         // 1. Busqueda por texto (Código o Título)
         if (!string.IsNullOrWhiteSpace(buscar))
@@ -57,8 +67,15 @@ public class DocumentosController : ControllerBase
     }
 
     [Authorize(Roles = "Escritor,Administrador")]
+    [Authorize(Roles = "Escritor,Administrador")]
     [HttpPost]
-    public async Task<ActionResult<Documento>> CrearDocumento([FromForm] string titulo, [FromForm] string codigo, [FromForm] TipoDocumento tipo, [FromForm] AreaProceso area, IFormFile archivo)
+    public async Task<ActionResult<Documento>> CrearDocumento(
+        [FromForm] string titulo, 
+        [FromForm] string codigo, 
+        [FromForm] TipoDocumento tipo, 
+        [FromForm] AreaProceso area, 
+        [FromForm] int? carpetaId,
+        IFormFile archivo)
     {
         if (archivo == null || archivo.Length == 0) return BadRequest("El archivo es obligatorio.");
 
@@ -68,6 +85,7 @@ public class DocumentosController : ControllerBase
             Codigo = codigo,
             Tipo = tipo,
             Area = area,
+            CarpetaDocumentoId = carpetaId, // Asignar carpeta
             Estado = EstadoDocumento.Borrador,
             VersionActual = 1
         };
@@ -232,4 +250,29 @@ public class DocumentosController : ControllerBase
 
         return Ok(new { mensaje = "Documento devuelto a borrador.", estado = documento.Estado });
     }
+
+    [Authorize(Roles = "Escritor,Administrador")]
+    [HttpPut("{id}/mover")]
+    public async Task<IActionResult> MoverDocumento(int id, [FromBody] MoverDocumentoRequest request)
+    {
+        var documento = await _context.Documentos.FindAsync(id);
+        if (documento == null) return NotFound();
+
+        // Validar que la carpeta exista si no es null (raíz)
+        if (request.CarpetaId.HasValue)
+        {
+            var existeCarpeta = await _context.CarpetasDocumentos.AnyAsync(c => c.Id == request.CarpetaId);
+            if (!existeCarpeta) return BadRequest("La carpeta destino no existe.");
+        }
+
+        documento.CarpetaDocumentoId = request.CarpetaId;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { mensaje = "Documento movido exitosamente." });
+    }
+}
+
+public class MoverDocumentoRequest
+{
+    public int? CarpetaId { get; set; }
 }

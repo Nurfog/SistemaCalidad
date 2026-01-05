@@ -14,6 +14,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<VersionDocumento> VersionesDocumento { get; set; }
     public DbSet<RegistroCalidad> RegistrosCalidad { get; set; }
     public DbSet<CarpetaRegistro> CarpetasRegistros { get; set; }
+    public DbSet<CarpetaDocumento> CarpetasDocumentos { get; set; }
     public DbSet<NoConformidad> NoConformidades { get; set; }
     public DbSet<AccionCalidad> AccionesCalidad { get; set; }
     public DbSet<UsuarioExterno> UsuariosExternos { get; set; }
@@ -36,7 +37,15 @@ public class ApplicationDbContext : DbContext
             .HasOne(v => v.Documento)
             .WithMany(d => d.Revisiones)
             .HasForeignKey(v => v.DocumentoId)
+            .HasForeignKey(v => v.DocumentoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Relación: CarpetaDocumento (Recursiva)
+        modelBuilder.Entity<CarpetaDocumento>()
+            .HasOne(c => c.Parent)
+            .WithMany(c => c.Subcarpetas)
+            .HasForeignKey(c => c.ParentId)
+            .OnDelete(DeleteBehavior.Restrict); // Evitar borrado en cascada accidental de ramas enteras
 
         // Relación: NoConformidad -> Acciones
         modelBuilder.Entity<AccionCalidad>()

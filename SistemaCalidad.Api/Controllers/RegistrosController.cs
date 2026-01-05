@@ -23,21 +23,39 @@ public class RegistrosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RegistroCalidad>>> GetRegistros([FromQuery] string? buscar)
+    public async Task<ActionResult<IEnumerable<RegistroCalidad>>> GetRegistros([FromQuery] string? buscar, [FromQuery] int? carpetaId)
     {
-        var query = _context.RegistrosCalidad.AsQueryable();
+        var query = _context.RegistrosCalidad
+            .Include(r => r.Carpeta)
+            .Where(r => !r.EstaEliminado)
+            .AsQueryable();
+
+        // Filtrar por carpeta (null = raíz)
+        if (carpetaId.HasValue)
+        {
+            query = query.Where(r => r.CarpetaRegistroId == carpetaId.Value);
+        }
+        else if (carpetaId == null) // Explícitamente raíz
+        {
+            query = query.Where(r => r.CarpetaRegistroId == null);
+        }
 
         if (!string.IsNullOrWhiteSpace(buscar))
         {
             query = query.Where(r => r.Nombre.Contains(buscar) || r.Identificador.Contains(buscar));
         }
 
-        return await query.ToListAsync();
+        return await query.OrderByDescending(r => r.FechaAlmacenamiento).ToListAsync();
     }
 
     [Authorize(Roles = "Escritor,Administrador")]
     [HttpPost]
-    public async Task<ActionResult<RegistroCalidad>> CrearRegistro([FromForm] string nombre, [FromForm] string identificador, [FromForm] int anosRetencion, IFormFile archivo)
+    public async Task<ActionResult<RegistroCalidad>> CrearRegistro(
+        [FromForm] string nombre, 
+        [FromForm] string identificador, 
+        [FromForm] int anosRetencion, 
+        [FromForm] int? carpetaId,
+        IFormFile archivo)
     {
         if (archivo == null || archivo.Length == 0) return BadRequest("El archivo es obligatorio para la evidencia.");
 
@@ -49,7 +67,8 @@ public class RegistrosController : ControllerBase
             Identificador = identificador,
             AnosRetencion = anosRetencion,
             RutaArchivo = rutaArchivo,
-            FechaAlmacenamiento = DateTime.UtcNow
+            FechaAlmacenamiento = DateTime.UtcNow,
+            CarpetaRegistroId = carpetaId
         };
 
         _context.RegistrosCalidad.Add(registro);
