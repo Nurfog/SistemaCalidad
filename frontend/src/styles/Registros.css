@@ -1,0 +1,44 @@
+/* Registros.css */
+
+.registros-page {
+    padding: 2rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.storage-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.retention-pill {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.col-id {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--primary-color);
+}
+
+.action-btn.text-error {
+    color: #ef4444;
+}
+
+.action-btn.text-error:hover {
+    background: #fef2f2;
+}
+
+@media (max-width: 768px) {
+
+    .col-storage,
+    .col-retention {
+        display: none;
+    }
+}

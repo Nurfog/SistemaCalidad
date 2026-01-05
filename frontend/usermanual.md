@@ -14,7 +14,7 @@ Para ingresar al sistema, debe utilizar sus credenciales del sistema central (SI
 3. Presione el botón **"Acceder al Sistema"**.
 
 > [!NOTE]
-> ![Captura de Pantalla - Pantalla de Login](Espacio para Imagen: login_screen.png)
+> ![Captura de Pantalla - Pantalla de Login](file:///C:/Users/Juan/.gemini/antigravity/brain/0d708250-249b-4a4b-b248-7cdd28b16b69/login_screen_1767627454515.png)
 > *Imagen 1: Interfaz de ingreso al sistema.*
 
 ---
@@ -49,7 +49,7 @@ En el menú lateral, puede acceder a la sección de **"Documentos"**.
   - 🔴 **Obsoleto:** Versión antigua o fuera de uso.
 
 > [!IMPORTANT]
-> ![Captura de Pantalla - Tabla de Documentos](Espacio para Imagen: documents_table.png)
+> ![Captura de Pantalla - Tabla de Documentos](file:///C:/Users/Juan/.gemini/antigravity/brain/0d708250-249b-4a4b-b248-7cdd28b16b69/listado_maestro_1767627499132.png)
 > *Imagen 3: Control y visualización del listado maestro.*
 
 ---

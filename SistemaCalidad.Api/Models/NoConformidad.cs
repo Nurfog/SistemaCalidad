@@ -29,7 +29,6 @@ public class NoConformidad
     [Key]
     public int Id { get; set; }
 
-    [Required]
     [MaxLength(20)]
     public string Folio { get; set; } = string.Empty; // Ej: NC-2026-001
 

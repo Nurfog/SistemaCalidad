@@ -99,6 +99,21 @@ const Documentos = () => {
         }
     };
 
+    const handleReject = async (docId) => {
+        const obs = prompt('Ingrese las observaciones del rechazo:');
+        if (obs === null) return; // Cancelado
+
+        try {
+            const formData = new FormData();
+            formData.append('observaciones', obs);
+            await api.post(`/Documentos/${docId}/rechazar`, formData);
+            fetchDocumentos();
+            setActiveMenu(null);
+        } catch (error) {
+            alert(error.response?.data?.mensaje || 'Error al rechazar');
+        }
+    };
+
     const getEstadoIcon = (estado) => {
         switch (estado) {
             case 0: return <Clock className="status-icon pending" size={16} />;
@@ -231,9 +246,14 @@ const Documentos = () => {
                                                             </button>
                                                         )}
                                                         {doc.estado === 1 && user?.Rol === 'Administrador' && (
-                                                            <button onClick={() => handleApprove(doc.id)} className="text-success">
-                                                                <CheckCircle size={14} /> Aprobar Documento
-                                                            </button>
+                                                            <>
+                                                                <button onClick={() => handleApprove(doc.id)} className="text-success">
+                                                                    <CheckCircle size={14} /> Aprobar Documento
+                                                                </button>
+                                                                <button onClick={() => handleReject(doc.id)} className="text-error">
+                                                                    <XCircle size={14} /> Rechazar / Corregir
+                                                                </button>
+                                                            </>
                                                         )}
                                                         <button className="text-muted">
                                                             <Eye size={14} /> Ver Historial

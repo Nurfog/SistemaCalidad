@@ -207,4 +207,29 @@ public class DocumentosController : ControllerBase
 
         return Ok(new { mensaje = "Documento aprobado y publicado.", estado = documento.Estado });
     }
+
+    [Authorize(Roles = "Administrador")]
+    [HttpPost("{id}/rechazar")]
+    public async Task<IActionResult> RechazarDocumento(int id, [FromForm] string observaciones)
+    {
+        var documento = await _context.Documentos.FindAsync(id);
+        if (documento == null) return NotFound();
+
+        if (documento.Estado != EstadoDocumento.EnRevision)
+            return BadRequest("Solo se pueden rechazar documentos que estén En Revisión.");
+
+        documento.Estado = EstadoDocumento.Borrador;
+        documento.FechaActualizacion = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        await _auditoria.RegistrarAccionAsync("RECHAZO", "Documento", id, $"Rechazó el documento. Obs: {observaciones}");
+
+        try {
+            await _emailService.SendEmailAsync("calidad@norteamericano.cl", 
+                "SGC: Documento Rechazado", 
+                $"El documento <b>{documento.Titulo}</b> ha sido devuelto a corregir. <br/><b>Observaciones:</b> {observaciones}");
+        } catch { }
+
+        return Ok(new { mensaje = "Documento devuelto a borrador.", estado = documento.Estado });
+    }
 }

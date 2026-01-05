@@ -3,6 +3,8 @@ import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Documentos from './pages/Documentos';
+import NoConformidades from './pages/NoConformidades';
+import Registros from './pages/Registros';
 import Layout from './components/Layout';
 
 // Componente para proteger rutas
@@ -27,6 +29,8 @@ function App() {
       }>
         <Route index element={<Dashboard />} />
         <Route path="documentos" element={<Documentos />} />
+        <Route path="no-conformidades" element={<NoConformidades />} />
+        <Route path="registros" element={<Registros />} />
         {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
       </Route>
 

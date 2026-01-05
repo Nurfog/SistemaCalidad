@@ -29,6 +29,15 @@ public class NoConformidadesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<NoConformidad>> CrearNoConformidad(NoConformidad nc)
     {
+        if (string.IsNullOrWhiteSpace(nc.Folio))
+        {
+            var anioActual = DateTime.UtcNow.Year;
+            var correlativo = await _context.NoConformidades
+                .CountAsync(x => x.FechaDeteccion.Year == anioActual) + 1;
+            
+            nc.Folio = $"NC-{anioActual}-{correlativo:D3}";
+        }
+
         _context.NoConformidades.Add(nc);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetNoConformidades), new { id = nc.Id }, nc);
@@ -46,5 +55,27 @@ public class NoConformidadesController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(accion);
+    }
+
+    [Authorize(Roles = "Escritor,Administrador")]
+    [HttpPatch("{id}/estado")]
+    public async Task<IActionResult> ActualizarEstado(int id, [FromForm] EstadoNoConformidad nuevoEstado, [FromForm] string? analisis)
+    {
+        var nc = await _context.NoConformidades.FindAsync(id);
+        if (nc == null) return NotFound();
+
+        nc.Estado = nuevoEstado;
+        if (!string.IsNullOrWhiteSpace(analisis))
+        {
+            nc.AnalisisCausa = analisis;
+        }
+
+        if (nuevoEstado == EstadoNoConformidad.Cerrada)
+        {
+            nc.FechaCierre = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { mensaje = "Estado actualizado exitosamente", estado = nc.Estado });
     }
 }
