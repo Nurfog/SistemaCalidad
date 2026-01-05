@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Documento> Documentos { get; set; }
     public DbSet<VersionDocumento> VersionesDocumento { get; set; }
     public DbSet<RegistroCalidad> RegistrosCalidad { get; set; }
+    public DbSet<CarpetaRegistro> CarpetasRegistros { get; set; }
     public DbSet<NoConformidad> NoConformidades { get; set; }
     public DbSet<AccionCalidad> AccionesCalidad { get; set; }
     public DbSet<UsuarioExterno> UsuariosExternos { get; set; }

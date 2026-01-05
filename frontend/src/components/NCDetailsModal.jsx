@@ -110,18 +110,20 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
                                     onChange={(e) => setAnalisis(e.target.value)}
                                 ></textarea>
                             </div>
-                            <button type="submit" className="btn-save-status" disabled={loading}>
-                                <Save size={16} /> Actualizar Seguimiento
+                            <button type="submit" className="btn-primary" disabled={loading}>
+                                <Save size={18} />
+                                <span>{loading ? 'Guardando...' : 'Actualizar Seguimiento'}</span>
                             </button>
                         </form>
                     </section>
 
                     <section className="nc-actions-section">
-                        <div className="section-header">
-                            <h3>Acciones Correctivas / Preventivas</h3>
+                        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0 }}>Acciones Correctivas / Preventivas</h3>
                             {!showAccionForm && (
                                 <button className="btn-add-mini" onClick={() => setShowAccionForm(true)}>
-                                    <Plus size={14} /> Nueva Acción
+                                    <Plus size={16} />
+                                    <span>Nueva Acción</span>
                                 </button>
                             )}
                         </div>

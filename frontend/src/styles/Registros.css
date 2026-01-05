@@ -1,38 +1,66 @@
-/* Registros.css */
+/* Registros.css - Standardized with Project Theme */
 
 .registros-page {
     padding: 2rem;
     animation: fadeIn 0.5s ease-out;
+    color: var(--text-main);
 }
 
 .storage-info {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     font-size: 0.85rem;
 }
 
 .retention-pill {
-    background: #f1f5f9;
-    color: #475569;
-    padding: 0.2rem 0.6rem;
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    padding: 0.25rem 0.75rem;
     border-radius: 6px;
     font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-container.card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.master-table th {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-muted);
     font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
 }
 
 .col-id {
     font-family: 'JetBrains Mono', monospace;
     color: var(--primary-color);
+    font-weight: 600;
 }
 
-.action-btn.text-error {
-    color: #ef4444;
+.action-btn {
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    color: var(--primary-color);
+    background: rgba(56, 189, 248, 0.1);
 }
 
 .action-btn.text-error:hover {
-    background: #fef2f2;
+    color: var(--danger-color);
+    background: rgba(239, 68, 68, 0.1);
 }
 
 @media (max-width: 768px) {

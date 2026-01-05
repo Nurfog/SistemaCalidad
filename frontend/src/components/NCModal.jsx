@@ -142,7 +142,7 @@ const NCModal = ({ isOpen, onClose, onSave }) => {
                         </button>
                         <button type="submit" className="btn-primary" disabled={loading}>
                             <Save size={18} />
-                            <span>{loading ? 'Guardando...' : 'Registrar Hallazgo'}</span>
+                            <span>{loading ? 'Procesando...' : 'Registrar Hallazgo'}</span>
                         </button>
                     </footer>
                 </form>

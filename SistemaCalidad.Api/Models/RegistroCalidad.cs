@@ -30,4 +30,10 @@ public class RegistroCalidad
     public bool EstaEliminado { get; set; } = false;
     
     public DateTime? FechaEliminacion { get; set; }
+
+    // Relación con Carpetas (Opcional, null = Raíz)
+    public int? CarpetaRegistroId { get; set; }
+    
+    [ForeignKey("CarpetaRegistroId")]
+    public CarpetaRegistro? Carpeta { get; set; }
 }
