@@ -12,6 +12,18 @@ namespace SistemaCalidad.Api.Controllers;
 [Route("api/[controller]")]
 public class NoConformidadesController : ControllerBase
 {
+    public class ActualizarEstadoDto
+    {
+        public EstadoNoConformidad NuevoEstado { get; set; }
+        public string? Analisis { get; set; }
+    }
+
+    public class VerificarAccionDto
+    {
+        public bool EsEficaz { get; set; }
+        public string Observaciones { get; set; } = string.Empty;
+    }
+
     private readonly ApplicationDbContext _context;
 
     public NoConformidadesController(ApplicationDbContext context)
@@ -59,18 +71,18 @@ public class NoConformidadesController : ControllerBase
 
     [Authorize(Roles = "Escritor,Administrador")]
     [HttpPatch("{id}/estado")]
-    public async Task<IActionResult> ActualizarEstado(int id, [FromForm] EstadoNoConformidad nuevoEstado, [FromForm] string? analisis)
+    public async Task<IActionResult> ActualizarEstado(int id, [FromBody] ActualizarEstadoDto dto)
     {
         var nc = await _context.NoConformidades.FindAsync(id);
         if (nc == null) return NotFound();
 
-        nc.Estado = nuevoEstado;
-        if (!string.IsNullOrWhiteSpace(analisis))
+        nc.Estado = dto.NuevoEstado;
+        if (!string.IsNullOrWhiteSpace(dto.Analisis))
         {
-            nc.AnalisisCausa = analisis;
+            nc.AnalisisCausa = dto.Analisis;
         }
 
-        if (nuevoEstado == EstadoNoConformidad.Cerrada)
+        if (dto.NuevoEstado == EstadoNoConformidad.Cerrada)
         {
             nc.FechaCierre = DateTime.UtcNow;
         }
@@ -93,13 +105,13 @@ public class NoConformidadesController : ControllerBase
 
     [Authorize(Roles = "Administrador")]
     [HttpPatch("acciones/{accionId}/verificar")]
-    public async Task<IActionResult> VerificarAccion(int accionId, [FromForm] bool esEficaz, [FromForm] string observaciones)
+    public async Task<IActionResult> VerificarAccion(int accionId, [FromBody] VerificarAccionDto dto)
     {
         var accion = await _context.AccionesCalidad.FindAsync(accionId);
         if (accion == null) return NotFound();
 
-        accion.EsEficaz = esEficaz;
-        accion.ObservacionesVerificacion = observaciones;
+        accion.EsEficaz = dto.EsEficaz;
+        accion.ObservacionesVerificacion = dto.Observaciones;
         await _context.SaveChangesAsync();
         return Ok(new { mensaje = "Verificación de eficacia registrada", esEficaz = accion.EsEficaz });
     }

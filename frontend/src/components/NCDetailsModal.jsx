@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { X, Save, Clock, CheckCircle2, AlertCircle, Plus, ClipboardList, User, Calendar } from 'lucide-react';
 import api from '../api/client';
@@ -9,6 +9,15 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
     const [loading, setLoading] = useState(false);
     const [nuevoEstado, setNuevoEstado] = useState(nc?.estado || 0);
     const [analisis, setAnalisis] = useState(nc?.analisisCausa || '');
+
+    // Sincronizar estado interno si cambia la NC (ej: tras una actualización en segundo plano)
+    useEffect(() => {
+        if (nc) {
+            setNuevoEstado(nc.estado);
+            setAnalisis(nc.analisisCausa || '');
+        }
+    }, [nc]);
+
     const [showAccionForm, setShowAccionForm] = useState(false);
     const [nuevaAccion, setNuevaAccion] = useState({
         descripcion: '',
@@ -22,12 +31,13 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const formData = new FormData();
-            formData.append('nuevoEstado', nuevoEstado);
-            formData.append('analisis', analisis);
+            const payload = {
+                nuevoEstado: parseInt(nuevoEstado),
+                analisis: analisis
+            };
 
-            await api.patch(`/NoConformidades/${nc.id}/estado`, formData);
-            onUpdate();
+            await api.patch(`/NoConformidades/${nc.id}/estado`, payload);
+            await onUpdate();
             alert('Estado actualizado correctamente');
         } catch (error) {
             console.error('Error al actualizar NC:', error);
@@ -217,12 +227,10 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
                                                     const obs = window.prompt('Ingrese observaciones de verificación de eficacia:');
                                                     if (obs) {
                                                         const eficaz = window.confirm('¿Fue la acción eficaz?');
-                                                        api.patch(`/NoConformidades/acciones/${acc.id}/verificar`, new URLSearchParams({
+                                                        api.patch(`/NoConformidades/acciones/${acc.id}/verificar`, {
                                                             esEficaz: eficaz,
                                                             observaciones: obs
-                                                        }), {
-                                                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                                                        }).then(() => onUpdate());
+                                                        }).then(async () => await onUpdate());
                                                     }
                                                 }}
                                             >

@@ -62,14 +62,24 @@ const NoConformidades = () => {
     };
 
     const handleNCUpdate = async () => {
-        await fetchNC();
-        // Buscar la NC actualizada en el nuevo listado para mantener el modal abierto con datos frescos
+        const response = await api.get('/NoConformidades');
+        setNoConformidades(response.data);
+
+        // Mantener el modal actualizado con la data fresca del servidor
         if (selectedNC) {
-            const response = await api.get('/NoConformidades');
             const updated = response.data.find(n => n.id === selectedNC.id);
-            setSelectedNC(updated);
+            if (updated) setSelectedNC(updated);
         }
     };
+
+    const ncFiltradas = noConformidades.filter(nc => {
+        const matchBuscar = (nc.folio || "").toLowerCase().includes(buscar.toLowerCase()) ||
+            (nc.descripcionHallazgo || "").toLowerCase().includes(buscar.toLowerCase());
+        const matchOrigen = filtros.origen === "" || nc.origen.toString() === filtros.origen;
+        const matchEstado = filtros.estado === "" || nc.estado.toString() === filtros.estado;
+
+        return matchBuscar && matchOrigen && matchEstado;
+    });
 
     const getEstadoIcon = (estado) => {
         switch (estado) {
@@ -174,7 +184,7 @@ const NoConformidades = () => {
                 {loading ? (
                     <div className="loading-state">Cargando hallazgos...</div>
                 ) : (
-                    noConformidades.map((nc) => (
+                    ncFiltradas.map((nc) => (
                         <div key={nc.id} className="nc-card card">
                             <div className="nc-card-header">
                                 <span className="nc-folio">{nc.folio}</span>
