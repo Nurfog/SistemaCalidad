@@ -365,15 +365,36 @@ public class DocumentosController : ControllerBase
             // 1. Obtener el archivo físico
             var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
             
-            // 2. Extraer texto plano con iText7
-            var sb = new StringBuilder();
-            
-            // Copiar a MemoryStream para asegurar compatibilidad (seekable)
+            // 2. Copiar a memoria
+            byte[] contenido;
             using (var ms = new MemoryStream())
             {
                 await datosArchivo.Content.CopyToAsync(ms);
-                ms.Position = 0; // Resetear posición para leer
-
+                contenido = ms.ToArray();
+            }
+            
+            // 3. Convertir a PDF si es necesario (igual que en DescargarDocumento)
+            string extension = Path.GetExtension(versionVigente.NombreArchivo).ToLower();
+            
+            if (extension != ".pdf")
+            {
+                Console.WriteLine($"[ChatDocumento] Convirtiendo {extension} a PDF...");
+                try
+                {
+                    contenido = _converterService.ConvertToPdf(contenido, extension);
+                    Console.WriteLine($"[ChatDocumento] Conversión exitosa. Nuevo tamaño: {contenido.Length} bytes");
+                }
+                catch (Exception convEx)
+                {
+                    Console.WriteLine($"[ChatDocumento] Error en conversión: {convEx.Message}");
+                    return BadRequest($"No se pudo convertir el documento {extension} a PDF: {convEx.Message}");
+                }
+            }
+            
+            // 4. Extraer texto plano con iText7
+            var sb = new StringBuilder();
+            using (var ms = new MemoryStream(contenido))
+            {
                 using (var pdfReader = new PdfReader(ms))
                 using (var pdfDoc = new PdfDocument(pdfReader))
                 {
@@ -402,7 +423,16 @@ public class DocumentosController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine($"[DocumentosController] Error en Chat IA: {ex}");
-            return StatusCode(500, $"Error al procesar consulta con IA: {ex.Message}");
+            Console.WriteLine($"[DocumentosController] Stack Trace: {ex.StackTrace}");
+            
+            // Mensaje más específico según el tipo de error
+            string mensajeUsuario = ex.Message.Contains("archivo") || ex.Message.Contains("file") 
+                ? "El archivo del documento no está disponible en el servidor. Por favor, contacta al administrador."
+                : ex.Message.Contains("API") || ex.Message.Contains("Google")
+                ? "Error al comunicarse con el servicio de IA. Verifica la configuración de la API Key."
+                : $"Error al procesar consulta con IA: {ex.Message}";
+                
+            return StatusCode(500, mensajeUsuario);
         }
     }
 }
