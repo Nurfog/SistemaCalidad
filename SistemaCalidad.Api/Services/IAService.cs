@@ -13,7 +13,7 @@ public class IAService : IIAService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
-    private const string ModelUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
+    private const string ModelUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
     public IAService(IConfiguration configuration, HttpClient httpClient)
     {
