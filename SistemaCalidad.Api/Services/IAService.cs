@@ -59,21 +59,32 @@ Pregunta: {pregunta}";
         var jsonResponse = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(jsonResponse);
         
-        // Navegar la respuesta de Gemini: candidates[0].content.parts[0].text
+        // Navegar la respuesta de Gemini de forma segura
         try
         {
-            var text = doc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString();
-
-            return text ?? "No se generó respuesta.";
+            if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+            {
+                var candidate = candidates[0];
+                if (candidate.TryGetProperty("content", out var candidateContent))
+                {
+                    if (candidateContent.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
+                    {
+                        var text = parts[0].GetProperty("text").GetString();
+                        return text ?? "La IA generó una respuesta vacía.";
+                    }
+                }
+                else if (candidate.TryGetProperty("finishReason", out var finishReason))
+                {
+                    return $"La IA no pudo responder por motivos de seguridad o filtro. Razón: {finishReason.GetString()}";
+                }
+            }
+            
+            return "No se pudo obtener una respuesta válida de Google AI (Sin candidatos).";
         }
-        catch
+        catch (Exception ex)
         {
-            return "Error al procesar la respuesta de la IA.";
+            Console.WriteLine($"[IAService] Error parseando respuesta: {ex}");
+            return $"Error al procesar la respuesta de la IA: {ex.Message}";
         }
     }
 }

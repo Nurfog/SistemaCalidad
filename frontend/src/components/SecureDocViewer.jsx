@@ -132,6 +132,11 @@ const SecureDocViewer = ({ fileUrl, fileName, onClose, user, docId }) => {
                     <button onClick={() => setScale(s => Math.min(2.0, s + 0.2))}>+</button>
                 </div>
             </div>
+
+            {/* Widget de Chat con IA */}
+            {docId && (
+                <AIChatWidget docId={docId} docTitle={fileName} />
+            )}
         </div>
     );
 };

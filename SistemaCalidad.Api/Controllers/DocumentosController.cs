@@ -367,16 +367,23 @@ public class DocumentosController : ControllerBase
             
             // 2. Extraer texto plano con iText7
             var sb = new StringBuilder();
-            using (var stream = await datosArchivo.Content.ReadAsStreamAsync())
-            using (var pdfReader = new PdfReader(stream))
-            using (var pdfDoc = new PdfDocument(pdfReader))
+            
+            // Copiar a MemoryStream para asegurar compatibilidad (seekable)
+            using (var ms = new MemoryStream())
             {
-                var pages = pdfDoc.GetNumberOfPages();
-                for (int i = 1; i <= pages; i++)
+                await datosArchivo.Content.CopyToAsync(ms);
+                ms.Position = 0; // Resetear posición para leer
+
+                using (var pdfReader = new PdfReader(ms))
+                using (var pdfDoc = new PdfDocument(pdfReader))
                 {
-                    var page = pdfDoc.GetPage(i);
-                    var text = PdfTextExtractor.GetTextFromPage(page);
-                    sb.AppendLine(text);
+                    var pages = pdfDoc.GetNumberOfPages();
+                    for (int i = 1; i <= pages; i++)
+                    {
+                        var page = pdfDoc.GetPage(i);
+                        var text = PdfTextExtractor.GetTextFromPage(page);
+                        sb.AppendLine(text);
+                    }
                 }
             }
 
@@ -403,4 +410,9 @@ public class DocumentosController : ControllerBase
 public class ChatRequest
 {
     public string Pregunta { get; set; }
+}
+
+public class MoverDocumentoRequest
+{
+    public int? CarpetaId { get; set; }
 }

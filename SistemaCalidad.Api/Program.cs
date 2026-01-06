@@ -145,6 +145,18 @@ else
     Console.WriteLine("💾 Almacenamiento configurado en: Local (Carpeta Storage)");
 }
 
+// Configuración de IA (Google Gemini)
+var googleApiKey = Environment.GetEnvironmentVariable("GOOGLE_AI_KEY");
+if (!string.IsNullOrEmpty(googleApiKey))
+{
+    builder.Configuration["GoogleAI:ApiKey"] = googleApiKey;
+    Console.WriteLine("[Startup] 🤖 IA configurada (Google Gemini)");
+}
+else
+{
+    Console.WriteLine("[Startup] ⚠️ ADVERTENCIA: No se detectó GOOGLE_AI_KEY. El chat inteligente no funcionará.");
+}
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();

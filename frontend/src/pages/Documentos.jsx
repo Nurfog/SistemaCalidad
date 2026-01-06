@@ -215,7 +215,7 @@ const Documentos = () => {
     const handleView = (doc) => {
         const token = localStorage.getItem('token'); // Asumiendo que el token se guarda aquí
         const fileConfig = {
-            url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/Documentos/${doc.id}/descargar`,
+            url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/Documentos/${doc.id}/descargar`,
             httpHeaders: {
                 'Authorization': `Bearer ${token}`
             }
