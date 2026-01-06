@@ -19,11 +19,27 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
     }, [nc]);
 
     const [showAccionForm, setShowAccionForm] = useState(false);
+    const [usuariosActivos, setUsuariosActivos] = useState([]);
     const [nuevaAccion, setNuevaAccion] = useState({
         descripcion: '',
         responsable: '',
+        responsableNombre: '',
         fechaCompromiso: new Date().toISOString().split('T')[0]
     });
+
+    useEffect(() => {
+        if (showAccionForm) {
+            const fetchUsuarios = async () => {
+                try {
+                    const response = await api.get('/Usuarios/activos');
+                    setUsuariosActivos(response.data);
+                } catch (error) {
+                    console.error('Error al cargar usuarios:', error);
+                }
+            };
+            fetchUsuarios();
+        }
+    }, [showAccionForm]);
 
     if (!isOpen || !nc) return null;
 
@@ -54,7 +70,12 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
             await api.post(`/NoConformidades/${nc.id}/acciones`, nuevaAccion);
             onUpdate();
             setShowAccionForm(false);
-            setNuevaAccion({ descripcion: '', responsable: '', fechaCompromiso: new Date().toISOString().split('T')[0] });
+            setNuevaAccion({
+                descripcion: '',
+                responsable: '',
+                responsableNombre: '',
+                fechaCompromiso: new Date().toISOString().split('T')[0]
+            });
         } catch (error) {
             console.error('Error al agregar acción:', error);
             alert('Error al agregar acción correctiva');
@@ -155,12 +176,21 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
                                 <div className="form-grid">
                                     <div className="form-group">
                                         <label>Responsable</label>
-                                        <input
+                                        <select
                                             required
-                                            type="text"
                                             value={nuevaAccion.responsable}
-                                            onChange={(e) => setNuevaAccion({ ...nuevaAccion, responsable: e.target.value })}
-                                        />
+                                            onChange={(e) => {
+                                                const selectedId = e.target.value;
+                                                const selectedName = usuariosActivos.find(u => u.id === selectedId)?.nombreCompleto || '';
+                                                setNuevaAccion({ ...nuevaAccion, responsable: selectedId, responsableNombre: selectedName });
+                                            }}
+                                            className="select-dark"
+                                        >
+                                            <option value="">Seleccione un responsable...</option>
+                                            {usuariosActivos.map(u => (
+                                                <option key={u.id} value={u.id}>{u.nombreCompleto}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="form-group">
                                         <label>Fecha Compromiso</label>
@@ -189,7 +219,7 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
                                         <div className="accion-main">
                                             <p className="accion-desc">{acc.descripcion}</p>
                                             <div className="accion-meta">
-                                                <span><User size={12} /> {acc.responsable}</span>
+                                                <span><User size={12} /> {acc.responsableNombre || acc.responsable}</span>
                                                 <span><Calendar size={12} /> Vence: {new Date(acc.fechaCompromiso).toLocaleDateString()}</span>
                                                 {acc.fechaEjecucion && (
                                                     <span className="text-success">
@@ -202,7 +232,7 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
 
                                     {/* Botones de Acción */}
                                     <div className="accion-actions">
-                                        {!acc.fechaEjecucion && (user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                                        {!acc.fechaEjecucion && (user?.Rol === 'Administrador' || user?.Rol === 'Escritor' || localStorage.getItem('usuario_id') === acc.responsable) && (
                                             <button
                                                 className="btn-success-mini"
                                                 onClick={async () => {

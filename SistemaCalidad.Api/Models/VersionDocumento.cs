@@ -37,5 +37,10 @@ public class VersionDocumento
 
     public DateTime? FechaAprobacion { get; set; }
 
+    // Flujo de Aprobación
+    public string EstadoRevision { get; set; } = "Aprobado"; // Pendiente, Aprobado, Rechazado
+    public string? ObservacionesRevision { get; set; }
+    public string? RevisadoPorId { get; set; } // RUT del Auditor Interno
+    public DateTime? FechaRevision { get; set; }
     public bool EsVersionActual { get; set; }
 }

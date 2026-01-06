@@ -41,7 +41,12 @@ public class UsuarioPermiso
     public int UsuarioIdExterno { get; set; }
 
     [Required]
-    public string Rol { get; set; } = "Lector"; // Administrador, Escritor, Lector
+    public string Rol { get; set; } = "Lector"; // Administrador, AuditorInterno, AuditorExterno, Responsable, Lector
+
+    // Para Auditores Externos Locales (No en SIGE)
+    public string? NombreCompleto { get; set; }
+    public string? PasswordHash { get; set; }
+    public string? EmailExterno { get; set; }
 
     public DateTime FechaAsignacion { get; set; } = DateTime.UtcNow;
 

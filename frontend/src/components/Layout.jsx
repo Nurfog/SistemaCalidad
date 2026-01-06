@@ -9,7 +9,8 @@ import {
     LogOut,
     User,
     ChevronRight,
-    ShieldAlert
+    ShieldAlert,
+    FileText
 } from 'lucide-react';
 import '../styles/Layout.css';
 
@@ -22,7 +23,10 @@ const Layout = () => {
         { name: 'Documentos', path: '/documentos', icon: <Files size={20} /> },
         { name: 'Registros', path: '/registros', icon: <FileCheck size={20} /> },
         { name: 'No Conformidades', path: '/no-conformidades', icon: <ShieldAlert size={20} /> },
+        { name: 'Anexos y Plantillas', path: '/anexos', icon: <FileText size={20} /> },
         { name: 'Auditoría', path: '/auditoria', icon: <History size={20} /> },
+        ...(user?.Rol === 'Administrador' || user?.Rol === 'AuditorExterno' || user?.Rol === 'AuditorInterno' ? [{ name: 'Trazabilidad', path: '/trazabilidad', icon: <History size={20} /> }] : []),
+        ...(user?.Rol === 'Administrador' ? [{ name: 'Usuarios', path: '/usuarios', icon: <User size={20} /> }] : []),
     ];
 
     return (

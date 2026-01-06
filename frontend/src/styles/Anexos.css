@@ -1,0 +1,144 @@
+.anexos-page {
+    padding: 2rem;
+}
+
+.anexos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.anexo-card {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s;
+}
+
+.anexo-card:hover {
+    transform: translateY(-4px);
+    border-color: #444;
+}
+
+.anexo-icon-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.anexo-icon {
+    color: #3b82f6;
+}
+
+.format-badge {
+    padding: 0.1rem 0.5rem;
+    background: #333;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #eee;
+}
+
+.format-badge.pdf {
+    background: #ef4444;
+}
+
+.format-badge.docx {
+    background: #2563eb;
+}
+
+.format-badge.xlsx {
+    background: #16a34a;
+}
+
+.anexo-info {
+    flex-grow: 1;
+}
+
+.anexo-code {
+    color: #888;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.anexo-info h3 {
+    margin: 0.2rem 0 0.5rem 0;
+    font-size: 1.1rem;
+    color: #fff;
+    line-height: 1.3;
+}
+
+.anexo-desc {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.obligatory-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.anexo-actions {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #2a2a2a;
+}
+
+.btn-download {
+    width: 100%;
+    background: #2a2a2a;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 0.6rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-download:hover {
+    background: #333;
+    border-color: #555;
+}
+
+.checkbox-group {
+    margin-bottom: 1.5rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.checkbox-label input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}

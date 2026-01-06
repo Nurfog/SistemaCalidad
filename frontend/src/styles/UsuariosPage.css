@@ -1,0 +1,98 @@
+.usuarios-container {
+    padding: 2rem;
+    color: #e0e0e0;
+}
+
+.search-bar-container {
+    margin: 1.5rem 0;
+    display: flex;
+    align-items: center;
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    border: 1px solid #333;
+}
+
+.search-bar-container input {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 100%;
+    margin-left: 0.8rem;
+    outline: none;
+}
+
+.role-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.role-badge.administrador {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.role-badge.auditorinterno {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.role-badge.auditorexterno {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+.role-badge.responsable {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.role-badge.lector {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-dot.active {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.status-dot.inactive {
+    background: #ef4444;
+}
+
+.external-auth-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #1e1e1e;
+    border-radius: 8px;
+    border-left: 4px solid #facc15;
+}
+
+.external-auth-section h3 {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    color: #facc15;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.help-text {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 0.4rem;
+}
+
+.user-modal {
+    max-width: 600px !important;
+}

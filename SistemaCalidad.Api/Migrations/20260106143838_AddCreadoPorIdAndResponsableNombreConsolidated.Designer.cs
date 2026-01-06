@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SistemaCalidad.Api.Data;
 
@@ -11,9 +12,11 @@ using SistemaCalidad.Api.Data;
 namespace SistemaCalidad.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260106143838_AddCreadoPorIdAndResponsableNombreConsolidated")]
+    partial class AddCreadoPorIdAndResponsableNombreConsolidated
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -421,10 +424,7 @@ namespace SistemaCalidad.Api.Migrations
 
                     b.HasKey("idUsuario");
 
-                    b.ToTable("usuario", "sige_sam_v3", t =>
-                        {
-                            t.ExcludeFromMigrations();
-                        });
+                    b.ToTable("usuario", "sige_sam_v3");
                 });
 
             modelBuilder.Entity("SistemaCalidad.Api.Models.UsuarioPermiso", b =>
@@ -435,17 +435,8 @@ namespace SistemaCalidad.Api.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("EmailExterno")
-                        .HasColumnType("longtext");
-
                     b.Property<DateTime>("FechaAsignacion")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<string>("NombreCompleto")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("longtext");
 
                     b.Property<string>("Rol")
                         .IsRequired()
@@ -453,7 +444,7 @@ namespace SistemaCalidad.Api.Migrations
 
                     b.HasKey("UsuarioIdExterno");
 
-                    b.ToTable("usuariospermisos", (string)null);
+                    b.ToTable("usuariospermisos", "sistemacalidad_nch2728");
                 });
 
             modelBuilder.Entity("SistemaCalidad.Api.Models.VersionDocumento", b =>
@@ -481,17 +472,10 @@ namespace SistemaCalidad.Api.Migrations
                     b.Property<bool>("EsVersionActual")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("EstadoRevision")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<DateTime?>("FechaAprobacion")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("FechaCarga")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("FechaRevision")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("NombreArchivo")
@@ -501,13 +485,7 @@ namespace SistemaCalidad.Api.Migrations
                     b.Property<int>("NumeroVersion")
                         .HasColumnType("int");
 
-                    b.Property<string>("ObservacionesRevision")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("RevisadoPor")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("RevisadoPorId")
                         .HasColumnType("longtext");
 
                     b.Property<string>("RutaArchivo")

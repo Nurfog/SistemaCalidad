@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SistemaCalidad.Api.Data;
 
@@ -11,9 +12,11 @@ using SistemaCalidad.Api.Data;
 namespace SistemaCalidad.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260106151104_AddRolesAndWorkflowsConsolidated_v2")]
+    partial class AddRolesAndWorkflowsConsolidated_v2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -489,9 +492,6 @@ namespace SistemaCalidad.Api.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("FechaCarga")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("FechaRevision")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("NombreArchivo")

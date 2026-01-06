@@ -61,9 +61,9 @@ public class ApplicationDbContext : DbContext
         // Mapeo Cross-Database (Schemas en MySQL)
         // Pomelo interpreta el 'schema' como el nombre de la otra base de datos
         modelBuilder.Entity<UsuarioExterno>()
-            .ToTable("usuario", "sige_sam_v3");
+            .ToTable("usuario", "sige_sam_v3", t => t.ExcludeFromMigrations());
 
         modelBuilder.Entity<UsuarioPermiso>()
-            .ToTable("usuariospermisos", "sistemacalidad_nch2728");
+            .ToTable("usuariospermisos");
     }
 }

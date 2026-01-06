@@ -235,12 +235,14 @@ const Documentos = () => {
                     </div>
                     <p>Control de información documentada NCh 2728</p>
                 </div>
-                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor' || user?.Rol === 'Responsable') && (
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button className="btn-secondary" onClick={() => setIsCarpetaModalOpen(true)}>
-                            <FolderPlus size={20} />
-                            <span>Nueva Carpeta</span>
-                        </button>
+                        {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                            <button className="btn-secondary" onClick={() => setIsCarpetaModalOpen(true)}>
+                                <FolderPlus size={20} />
+                                <span>Nueva Carpeta</span>
+                            </button>
+                        )}
                         <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
                             <Plus size={20} />
                             <span>Nuevo Documento</span>
@@ -373,7 +375,7 @@ const Documentos = () => {
                                                                 <Send size={14} /> Solicitar Revisión
                                                             </button>
                                                         )}
-                                                        {doc.estado === 1 && user?.Rol === 'Administrador' && (
+                                                        {doc.estado === 1 && (user?.Rol === 'Administrador' || user?.Rol === 'AuditorInterno') && (
                                                             <>
                                                                 <button onClick={() => handleApprove(doc.id)} className="text-success">
                                                                     <CheckCircle size={14} /> Aprobar

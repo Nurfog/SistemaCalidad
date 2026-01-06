@@ -4,6 +4,7 @@ using SistemaCalidad.Api.Data;
 using SistemaCalidad.Api.Models;
 
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace SistemaCalidad.Api.Controllers;
 
@@ -34,7 +35,36 @@ public class NoConformidadesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<NoConformidad>>> GetNoConformidades()
     {
-        return await _context.NoConformidades.Include(nc => nc.Acciones).ToListAsync();
+        var ncs = await _context.NoConformidades.Include(nc => nc.Acciones).ToListAsync();
+        
+        // Obtener el ID del usuario actual (RUT)
+        var currentUserId = User.Identity?.Name;
+        
+        // Verificación robusta de roles
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var isAdminOrAuditor = roles.Any(r => 
+            r.Equals("Administrador", StringComparison.OrdinalIgnoreCase) || 
+            r.Equals("Escritor", StringComparison.OrdinalIgnoreCase) ||
+            r.Equals("AuditorInterno", StringComparison.OrdinalIgnoreCase) ||
+            r.Equals("AuditorExterno", StringComparison.OrdinalIgnoreCase));
+
+        if (!isAdminOrAuditor && !string.IsNullOrEmpty(currentUserId))
+        {
+            // Solo ver NCs donde soy el creador O tengo acciones asignadas
+            // Y que aún no estén verificadas/cerradas (Estado < 3)
+            ncs = ncs.Where(nc => 
+                (nc.CreadoPorId == currentUserId || nc.Acciones.Any(a => a.Responsable == currentUserId)) &&
+                nc.Estado < EstadoNoConformidad.Verificada
+            ).ToList();
+
+            // Dentro de las NCs visibles, el responsable solo ve SUS acciones
+            foreach(var nc in ncs)
+            {
+                nc.Acciones = nc.Acciones.Where(a => a.Responsable == currentUserId).ToList();
+            }
+        }
+
+        return Ok(ncs);
     }
 
     [Authorize(Roles = "Escritor,Administrador")]
@@ -50,6 +80,7 @@ public class NoConformidadesController : ControllerBase
             nc.Folio = $"NC-{anioActual}-{correlativo:D3}";
         }
 
+        nc.CreadoPorId = User.Identity?.Name;
         _context.NoConformidades.Add(nc);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetNoConformidades), new { id = nc.Id }, nc);
@@ -91,12 +122,21 @@ public class NoConformidadesController : ControllerBase
         return Ok(new { mensaje = "Estado actualizado exitosamente", estado = nc.Estado });
     }
 
-    [Authorize(Roles = "Escritor,Administrador")]
+    [Authorize] // Permitir a responsables (no solo auditores)
     [HttpPatch("acciones/{accionId}/ejecutar")]
     public async Task<IActionResult> EjecutarAccion(int accionId)
     {
         var accion = await _context.AccionesCalidad.FindAsync(accionId);
         if (accion == null) return NotFound();
+
+        // Verificar si el usuario actual es el responsable o auditor
+        var currentUserId = User.Identity?.Name;
+        var isAdminOrWriter = User.IsInRole("Administrador") || User.IsInRole("Escritor");
+
+        if (accion.Responsable != currentUserId && !isAdminOrWriter)
+        {
+            return Forbid("No tienes permiso para ejecutar esta acción.");
+        }
 
         accion.FechaEjecucion = DateTime.UtcNow;
         await _context.SaveChangesAsync();

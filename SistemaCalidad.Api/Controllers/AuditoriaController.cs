@@ -18,10 +18,30 @@ public class AuditoriaController : ControllerBase
         _context = context;
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,AuditorInterno,AuditorExterno")]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AuditoriaAcceso>>> GetLogs()
     {
-        return await _context.AuditoriaAccesos.OrderByDescending(a => a.Fecha).Take(100).ToListAsync();
+        return await _context.AuditoriaAccesos.OrderByDescending(a => a.Fecha).Take(200).ToListAsync();
+    }
+
+    [Authorize(Roles = "Administrador,AuditorInterno,AuditorExterno")]
+    [HttpGet("resumen-soluciones")]
+    public async Task<IActionResult> GetResumenSoluciones()
+    {
+        var ncCerradas = await _context.NoConformidades
+            .Where(nc => nc.Estado == EstadoNoConformidad.Cerrada)
+            .OrderByDescending(nc => nc.FechaCierre)
+            .Take(20)
+            .Select(nc => new {
+                nc.Folio,
+                nc.DescripcionHallazgo,
+                nc.FechaCierre,
+                nc.AnalisisCausa,
+                Acciones = nc.Acciones.Select(a => new { a.Descripcion, a.FechaEjecucion })
+            })
+            .ToListAsync();
+
+        return Ok(ncCerradas);
     }
 }

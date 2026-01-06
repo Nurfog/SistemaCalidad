@@ -5,6 +5,9 @@ import Dashboard from './pages/Dashboard';
 import Documentos from './pages/Documentos';
 import NoConformidades from './pages/NoConformidades';
 import Registros from './pages/Registros';
+import UsuariosPage from './pages/UsuariosPage';
+import PanelAuditoriaExterna from './pages/PanelAuditoriaExterna';
+import Anexos from './pages/Anexos';
 import Layout from './components/Layout';
 
 // Componente para proteger rutas
@@ -31,6 +34,9 @@ function App() {
         <Route path="documentos" element={<Documentos />} />
         <Route path="no-conformidades" element={<NoConformidades />} />
         <Route path="registros" element={<Registros />} />
+        <Route path="usuarios" element={<UsuariosPage />} />
+        <Route path="trazabilidad" element={<PanelAuditoriaExterna />} />
+        <Route path="anexos" element={<Anexos />} />
         {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
       </Route>
 

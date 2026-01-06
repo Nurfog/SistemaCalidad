@@ -48,6 +48,8 @@ public class NoConformidad
     public string? ResponsableAnalisis { get; set; }
 
     public DateTime? FechaCierre { get; set; }
+    
+    public string? CreadoPorId { get; set; } // RUT del creador para control de acceso
 
     // Relación con acciones tomadas
     public virtual ICollection<AccionCalidad> Acciones { get; set; } = new List<AccionCalidad>();
@@ -72,7 +74,9 @@ public class AccionCalidad
 
     public DateTime? FechaEjecucion { get; set; }
 
-    public string Responsable { get; set; } = string.Empty;
+    public string Responsable { get; set; } = string.Empty; // Guardará el RUT/ID
+
+    public string? ResponsableNombre { get; set; } // Nombre para visualización
 
     public bool EsEficaz { get; set; } = false;
     

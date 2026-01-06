@@ -29,67 +29,58 @@ public class AuthService : IAuthService
     {
         username = username.Trim();
         password = password.Trim();
-        // 1. Buscar el usuario en el schema externo sige_sam_v3 utilizando idUsuario (RUT)
-        // Seleccionamos campos específicos para evitar conflictos con columnas que no conocemos
+
+        // 1. Intentar buscar primero en SIGE (Usuarios Externos)
         var usuarioExterno = await _context.UsuariosExternos
             .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email, Nombres, ApPaterno FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
             .FirstOrDefaultAsync();
 
-        if (usuarioExterno == null) 
+        if (usuarioExterno != null)
         {
-            Console.WriteLine($"[AUTH] Usuario {username} no encontrado en sige_sam_v3.usuario");
-            return (false, "", "", "");
+            // Validar Password SIGE
+            bool isPasswordValid = false;
+            if (usuarioExterno.password.Length > 20)
+                isPasswordValid = VerifySha256(password, usuarioExterno.password);
+            else
+                isPasswordValid = (password == usuarioExterno.password);
+
+            if (isPasswordValid && usuarioExterno.activo == 1)
+            {
+                // Verificar si tiene permiso en nuestro sistema
+                if (int.TryParse(usuarioExterno.idUsuario, out int idInt))
+                {
+                    var permiso = await _context.UsuariosPermisos
+                        .FirstOrDefaultAsync(p => p.UsuarioIdExterno == idInt && p.Activo);
+
+                    if (permiso != null)
+                    {
+                        var fullName = $"{usuarioExterno.nombres} {usuarioExterno.apPaterno}".Trim();
+                        if (string.IsNullOrEmpty(fullName)) fullName = usuarioExterno.usuario;
+
+                        var token = GenerateJwtToken(usuarioExterno.usuario, permiso.Rol, fullName);
+                        return (true, token, permiso.Rol, fullName);
+                    }
+                }
+            }
         }
 
-        // 2. Verificar estado activo (1=Activo, 0=Inactivo)
-        if (usuarioExterno.activo != 1) 
+        // 2. Si no es usuario SIGE o falló, buscar en Usuarios Locales (Auditores Externos, etc.)
+        if (int.TryParse(username, out int rutInt))
         {
-            Console.WriteLine($"[AUTH] Usuario {username} desactivado (Activo={usuarioExterno.activo})");
-            return (false, "CUENTA_DESACTIVADA", "", "");
+            var permisoLocal = await _context.UsuariosPermisos
+                .FirstOrDefaultAsync(p => p.UsuarioIdExterno == rutInt && p.Activo && !string.IsNullOrEmpty(p.PasswordHash));
+
+            if (permisoLocal != null)
+            {
+                if (VerifySha256(password, permisoLocal.PasswordHash!))
+                {
+                    var token = GenerateJwtToken(username, permisoLocal.Rol, permisoLocal.NombreCompleto ?? username);
+                    return (true, token, permisoLocal.Rol, permisoLocal.NombreCompleto ?? username);
+                }
+            }
         }
 
-        // 3. Verificar password (Texto plano o SHA-1)
-        bool isPasswordValid = false;
-        
-        if (usuarioExterno.password.Length > 20)
-        {
-            // Es un hash SHA-256
-            isPasswordValid = VerifySha256(password, usuarioExterno.password);
-            Console.WriteLine($"[AUTH] Verificando SHA256 para {username}: {isPasswordValid}");
-        }
-        else
-        {
-            // Es texto plano
-            isPasswordValid = (password == usuarioExterno.password);
-            Console.WriteLine($"[AUTH] Verificando Texto Plano para {username}: {isPasswordValid}");
-        }
-
-        if (!isPasswordValid) return (false, "", "", "");
-
-        // 3. Verificar si tiene permiso en el sistema de Calidad
-        // Convertimos el idUsuario (string en SIGE) a int para comparar con nuestra tabla (INT)
-        if (!int.TryParse(usuarioExterno.idUsuario, out int idInt))
-        {
-            Console.WriteLine($"[AUTH] Error al convertir RUT {usuarioExterno.idUsuario} a entero para búsqueda de permisos.");
-            return (false, "ERROR_SISTEMA", "", "");
-        }
-
-        var permiso = await _context.UsuariosPermisos
-            .FirstOrDefaultAsync(p => p.UsuarioIdExterno == idInt && p.Activo);
-
-        if (permiso == null) 
-        {
-            Console.WriteLine($"[AUTH] Usuario {username} (ID: {idInt}) no tiene permisos en sistemacalidad_nch2728");
-            return (false, "SIN_PERMISO", "", "");
-        }
-
-        // 4. Generar Token JWT Real
-        var fullName = $"{usuarioExterno.nombres} {usuarioExterno.apPaterno}".Trim();
-        if (string.IsNullOrEmpty(fullName)) fullName = usuarioExterno.usuario;
-
-        var token = GenerateJwtToken(usuarioExterno.usuario, permiso.Rol, fullName);
-
-        return (true, token, permiso.Rol, fullName);
+        return (false, "", "", "");
     }
 
     private string GenerateJwtToken(string username, string role, string fullName)

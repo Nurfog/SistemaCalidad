@@ -56,18 +56,20 @@ public class DocumentosController : ControllerBase
         if (area.HasValue) query = query.Where(d => d.Area == area.Value);
         if (estado.HasValue) query = query.Where(d => d.Estado == estado.Value);
 
-        // 3. Seguridad: Si el usuario es Lector, solo puede ver documentos APROBADOS
-        // (E incluso si filtra por otro estado, la seguridad se impone)
-        if (User.IsInRole("Lector") && !User.IsInRole("Administrador") && !User.IsInRole("Escritor"))
+        // 3. Seguridad Granular por Roles
+        var isAdminOrAuditor = User.IsInRole("Administrador") || User.IsInRole("AuditorInterno") || User.IsInRole("AuditorExterno");
+        var isResponsable = User.IsInRole("Responsable");
+
+        if (!isAdminOrAuditor && !isResponsable)
         {
+            // Usuarios Lector/Común solo ven Aprobados
             query = query.Where(d => d.Estado == EstadoDocumento.Aprobado);
         }
 
         return await query.ToListAsync();
     }
 
-    [Authorize(Roles = "Escritor,Administrador")]
-    [Authorize(Roles = "Escritor,Administrador")]
+    [Authorize(Roles = "Administrador,Escritor,Responsable")]
     [HttpPost]
     public async Task<ActionResult<Documento>> CrearDocumento(
         [FromForm] string titulo, 
@@ -104,7 +106,8 @@ public class DocumentosController : ControllerBase
             RutaArchivo = rutaArchivo,
             TipoContenido = archivo.ContentType,
             EsVersionActual = true,
-            CreadoPor = "Admin Sistema"
+            CreadoPor = User.Identity?.Name ?? "Sistema",
+            EstadoRevision = "Pendiente" // Se crea como pendiente para que el auditor lo vea
         };
 
         _context.VersionesDocumento.Add(revision);
@@ -137,7 +140,8 @@ public class DocumentosController : ControllerBase
             RutaArchivo = rutaArchivo,
             TipoContenido = archivo.ContentType,
             EsVersionActual = true,
-            CreadoPor = "Admin Sistema"
+            CreadoPor = User.Identity?.Name ?? "Sistema",
+            EstadoRevision = "Pendiente"
         };
 
         _context.VersionesDocumento.Add(revision);
@@ -193,7 +197,7 @@ public class DocumentosController : ControllerBase
         return Ok(new { mensaje = "Documento enviado a revisión exitosamente.", estado = documento.Estado });
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,AuditorInterno")]
     [HttpPost("{id}/aprobar")]
     public async Task<IActionResult> AprobarDocumento(int id)
     {
@@ -211,6 +215,9 @@ public class DocumentosController : ControllerBase
         {
             versionActual.AprobadoPor = User.Identity?.Name ?? "Admin";
             versionActual.FechaAprobacion = DateTime.UtcNow;
+            versionActual.EstadoRevision = "Aprobado";
+            versionActual.FechaRevision = DateTime.UtcNow;
+            versionActual.RevisadoPorId = User.Identity?.Name;
         }
 
         await _context.SaveChangesAsync();
@@ -226,7 +233,7 @@ public class DocumentosController : ControllerBase
         return Ok(new { mensaje = "Documento aprobado y publicado.", estado = documento.Estado });
     }
 
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,AuditorInterno")]
     [HttpPost("{id}/rechazar")]
     public async Task<IActionResult> RechazarDocumento(int id, [FromForm] string observaciones)
     {
@@ -236,8 +243,14 @@ public class DocumentosController : ControllerBase
         if (documento.Estado != EstadoDocumento.EnRevision)
             return BadRequest("Solo se pueden rechazar documentos que estén En Revisión.");
 
-        documento.Estado = EstadoDocumento.Borrador;
-        documento.FechaActualizacion = DateTime.UtcNow;
+        var versionActual = await _context.VersionesDocumento.FirstOrDefaultAsync(v => v.DocumentoId == id && v.EsVersionActual);
+        if (versionActual != null)
+        {
+            versionActual.EstadoRevision = "Rechazado";
+            versionActual.ObservacionesRevision = observaciones;
+            versionActual.FechaRevision = DateTime.UtcNow;
+            versionActual.RevisadoPorId = User.Identity?.Name;
+        }
 
         await _context.SaveChangesAsync();
         await _auditoria.RegistrarAccionAsync("RECHAZO", "Documento", id, $"Rechazó el documento. Obs: {observaciones}");

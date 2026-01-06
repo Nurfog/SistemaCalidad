@@ -42,13 +42,13 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] **Status Dashboard:** Monitoreo en tiempo real de API, DB y S3 en `/status`.
 
 ## 🚀 Fase 5: Expansión de Módulos (En Progreso 🚧)
-- [ ] **Funcionalidad Completa:**
-  - Flujo de aprobación de documentos (Revisión -> Aprobación).
-  - Módulos de No Conformidades y Acciones de Calidad.
-  - Gestión de Registros y Evidencias.
-  - Panel de Anexos y Plantillas Maestras.
-- [ ] **Integración Cloud:**
-  - Consolidación del almacenamiento en Amazon S3.
+- [x] **Funcionalidad Completa:**
+  - [x] Flujo de aprobación de documentos (Revisión -> Aprobación) (Completado ✅).
+  - [x] Módulos de No Conformidades y Acciones de Calidad (Completado ✅).
+  - [ ] Panel de Anexos y Plantillas Maestras.
+  - [x] Gestión de Registros y Evidencias (Completado ✅).
+- [x] **Integración Cloud:**
+  - [x] Almacenamiento consolidado en Amazon S3 (Completado ✅).
 
 ## 📄 Documentación (Nueva ✅)
 - [x] **Manual de Usuario:** Guía visual para el personal administrativo.

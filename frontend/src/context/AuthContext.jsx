@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
             const userData = { Nombre: fullName, Rol: rol };
 
             localStorage.setItem('token', token);
+            localStorage.setItem('usuario_id', usuario); // Guardamos el RUT original para validaciones
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
 
