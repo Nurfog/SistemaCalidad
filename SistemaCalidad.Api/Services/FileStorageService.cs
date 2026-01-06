@@ -4,7 +4,7 @@ public interface IFileStorageService
 {
     Task<string> SaveFileAsync(Stream fileStream, string fileName, string subDirectory);
     Task<(Stream Content, string ContentType, string FileName)> GetFileAsync(string filePath);
-    void DeleteFile(string filePath);
+    Task DeleteFileAsync(string filePath);
 }
 
 public class LocalFileStorageService : IFileStorageService
@@ -58,13 +58,14 @@ public class LocalFileStorageService : IFileStorageService
         return (memory, contentType, Path.GetFileName(fullPath));
     }
 
-    public void DeleteFile(string filePath)
+    public Task DeleteFileAsync(string filePath)
     {
         var fullPath = Path.Combine(_basePath, filePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
         }
+        return Task.CompletedTask;
     }
 
     private string GetContentType(string path)

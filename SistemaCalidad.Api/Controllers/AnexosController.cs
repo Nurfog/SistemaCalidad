@@ -66,13 +66,21 @@ public class AnexosController : ControllerBase
     [HttpGet("{id}/descargar")]
     public async Task<IActionResult> DescargarAnexo(int id)
     {
-        var anexo = await _context.Anexos.FindAsync(id);
-        if (anexo == null) return NotFound();
+        try 
+        {
+            var anexo = await _context.Anexos.FindAsync(id);
+            if (anexo == null) return NotFound("Anexo no encontrado en la base de datos.");
 
-        var datosArchivo = await _fileService.GetFileAsync(anexo.RutaArchivo);
-        
-        await _auditoria.RegistrarAccionAsync("DESCARGA_PLANTILLA", "Anexo", id, $"Descargó plantilla: {anexo.Nombre}");
-        
-        return File(datosArchivo.Content, datosArchivo.ContentType, System.IO.Path.GetFileName(anexo.RutaArchivo));
+            var datosArchivo = await _fileService.GetFileAsync(anexo.RutaArchivo);
+            
+            await _auditoria.RegistrarAccionAsync("DESCARGA_PLANTILLA", "Anexo", id, $"Descargó plantilla: {anexo.Nombre}");
+            
+            return File(datosArchivo.Content, datosArchivo.ContentType, System.IO.Path.GetFileName(anexo.RutaArchivo));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AnexosController] Error descargando anexo {id}: {ex.Message}");
+            return StatusCode(500, $"Error interno al descargar: {ex.Message}");
+        }
     }
 }

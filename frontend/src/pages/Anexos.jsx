@@ -51,7 +51,9 @@ const Anexos = () => {
             link.click();
             link.remove();
         } catch (error) {
-            alert('Error al descargar el anexo.');
+            console.error('Error descargando:', error);
+            const detail = typeof error.response?.data === 'string' ? error.response.data : 'Error desconocido';
+            alert('Error al descargar el anexo: ' + detail);
         }
     };
 

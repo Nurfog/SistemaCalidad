@@ -13,29 +13,6 @@ public class S3FileStorageService : IFileStorageService
     {
         _s3Client = s3Client;
         _bucketName = configuration["FileStorage:S3:BucketName"] ?? "sistemacalidad-nch2728";
-        
-        // Inicializar bucket si no existe (Desde 0)
-        InitializeBucketAsync().Wait();
-    }
-
-    private async Task InitializeBucketAsync()
-    {
-        try
-        {
-            if (!await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, _bucketName))
-            {
-                var putBucketRequest = new PutBucketRequest
-                {
-                    BucketName = _bucketName,
-                    UseClientRegion = true
-                };
-                await _s3Client.PutBucketAsync(putBucketRequest);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al inicializar Bucket S3: {ex.Message}");
-        }
     }
 
     public async Task<string> SaveFileAsync(Stream fileStream, string fileName, string subDirectory)
@@ -48,7 +25,8 @@ public class S3FileStorageService : IFileStorageService
             BucketName = _bucketName,
             Key = key,
             InputStream = fileStream,
-            AutoCloseStream = true
+            AutoCloseStream = true,
+            ContentType = GetContentType(fileName)
         };
 
         await _s3Client.PutObjectAsync(putRequest);
@@ -64,16 +42,30 @@ public class S3FileStorageService : IFileStorageService
             Key = filePath
         };
 
-        using var response = await _s3Client.GetObjectAsync(getRequest);
-        var memoryStream = new MemoryStream();
-        await response.ResponseStream.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
-
-        return (memoryStream, response.Headers.ContentType, Path.GetFileName(filePath));
+        var response = await _s3Client.GetObjectAsync(getRequest);
+        // Retornamos el stream directamente, el controlador se encargará de cerrarlo al terminar la respuesta
+        return (response.ResponseStream, response.Headers.ContentType ?? "application/octet-stream", Path.GetFileName(filePath));
     }
 
-    public void DeleteFile(string filePath)
+    public async Task DeleteFileAsync(string filePath)
     {
-        _s3Client.DeleteObjectAsync(_bucketName, filePath).Wait();
+        await _s3Client.DeleteObjectAsync(_bucketName, filePath);
+    }
+
+    private string GetContentType(string fileName)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".pdf" => "application/pdf",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc" => "application/msword",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls" => "application/vnd.ms-excel",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream"
+        };
     }
 }

@@ -153,23 +153,31 @@ public class DocumentosController : ControllerBase
     [HttpGet("{id}/descargar")]
     public async Task<IActionResult> DescargarDocumento(int id)
     {
-        var documento = await _context.Documentos.Include(d => d.Revisiones).FirstOrDefaultAsync(d => d.Id == id);
-        if (documento == null) return NotFound();
-
-        // Seguridad: Un Lector no puede bajar borradores
-        if (User.IsInRole("Lector") && !User.IsInRole("Administrador") && documento.Estado != EstadoDocumento.Aprobado)
+        try 
         {
-            return Forbid("No tienes permiso para descargar documentos en estado borrador o revisión.");
+            var documento = await _context.Documentos.Include(d => d.Revisiones).FirstOrDefaultAsync(d => d.Id == id);
+            if (documento == null) return NotFound();
+
+            // Seguridad: Un Lector no puede bajar borradores
+            if (User.IsInRole("Lector") && !User.IsInRole("Administrador") && documento.Estado != EstadoDocumento.Aprobado)
+            {
+                return Forbid("No tienes permiso para descargar documentos en estado borrador o revisión.");
+            }
+
+            var versionVigente = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+            if (versionVigente == null) return NotFound("No se encontró una versión activa.");
+
+            var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
+            
+            await _auditoria.RegistrarAccionAsync("DESCARGA", "Documento", id, $"Descargó {versionVigente.NombreArchivo} (v{versionVigente.NumeroVersion})");
+            
+            return File(datosArchivo.Content, datosArchivo.ContentType, versionVigente.NombreArchivo);
         }
-
-        var versionVigente = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
-        if (versionVigente == null) return NotFound("No se encontró una versión activa.");
-
-        var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
-        
-        await _auditoria.RegistrarAccionAsync("DESCARGA", "Documento", id, $"Descargó {versionVigente.NombreArchivo} (v{versionVigente.NumeroVersion})");
-        
-        return File(datosArchivo.Content, datosArchivo.ContentType, versionVigente.NombreArchivo);
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DocumentosController] Error descargando documento {id}: {ex.Message}");
+            return StatusCode(500, $"Error interno al descargar: {ex.Message}");
+        }
     }
 
     [Authorize(Roles = "Escritor,Administrador")]

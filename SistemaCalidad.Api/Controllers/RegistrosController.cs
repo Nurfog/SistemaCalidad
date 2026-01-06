@@ -80,18 +80,26 @@ public class RegistrosController : ControllerBase
     [HttpGet("{id}/descargar")]
     public async Task<IActionResult> DescargarRegistro(int id)
     {
-        var registro = await _context.RegistrosCalidad.FindAsync(id);
-        if (registro == null) return NotFound();
+        try 
+        {
+            var registro = await _context.RegistrosCalidad.FindAsync(id);
+            if (registro == null) return NotFound();
 
-        if (string.IsNullOrEmpty(registro.RutaArchivo)) return NotFound("No hay archivo asociado a este registro.");
+            if (string.IsNullOrEmpty(registro.RutaArchivo)) return NotFound("No hay archivo asociado a este registro.");
 
-        var datosArchivo = await _fileService.GetFileAsync(registro.RutaArchivo);
-        
-        // El nombre original suele estar despues del primer guion bajo si se usa Guid_OriginalName
-        var originalName = registro.RutaArchivo.Contains("_") 
-            ? registro.RutaArchivo.Substring(registro.RutaArchivo.IndexOf('_') + 1)
-            : Path.GetFileName(registro.RutaArchivo);
+            var datosArchivo = await _fileService.GetFileAsync(registro.RutaArchivo);
+            
+            // El nombre original suele estar despues del primer guion bajo si se usa Guid_OriginalName
+            var originalName = registro.RutaArchivo.Contains("_") 
+                ? registro.RutaArchivo.Substring(registro.RutaArchivo.IndexOf('_') + 1)
+                : Path.GetFileName(registro.RutaArchivo);
 
-        return File(datosArchivo.Content, datosArchivo.ContentType, originalName);
+            return File(datosArchivo.Content, datosArchivo.ContentType, originalName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RegistrosController] Error descargando registro {id}: {ex.Message}");
+            return StatusCode(500, $"Error interno al descargar: {ex.Message}");
+        }
     }
 }
