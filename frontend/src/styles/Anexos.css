@@ -1,3 +1,4 @@
+/* Anexos.css - Updated */
 .anexos-page {
     padding: 2rem;
 }
@@ -10,18 +11,19 @@
 }
 
 .anexo-card {
-    background: #1e1e1e;
-    border: 1px solid #333;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     transition: transform 0.2s;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .anexo-card:hover {
     transform: translateY(-4px);
-    border-color: #444;
+    border-color: var(--primary);
 }
 
 .anexo-icon-wrapper {
@@ -32,28 +34,32 @@
 }
 
 .anexo-icon {
-    color: #3b82f6;
+    color: var(--primary);
 }
 
 .format-badge {
     padding: 0.1rem 0.5rem;
-    background: #333;
+    background: var(--bg-primary);
     border-radius: 4px;
     font-size: 0.7rem;
     font-weight: 700;
-    color: #eee;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .format-badge.pdf {
-    background: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
 }
 
 .format-badge.docx {
-    background: #2563eb;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary);
 }
 
 .format-badge.xlsx {
-    background: #16a34a;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
 }
 
 .anexo-info {
@@ -61,7 +67,7 @@
 }
 
 .anexo-code {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -70,13 +76,13 @@
 .anexo-info h3 {
     margin: 0.2rem 0 0.5rem 0;
     font-size: 1.1rem;
-    color: #fff;
+    color: var(--text-primary);
     line-height: 1.3;
 }
 
 .anexo-desc {
     font-size: 0.85rem;
-    color: #aaa;
+    color: var(--text-secondary);
     margin-bottom: 1rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -90,7 +96,7 @@
     align-items: center;
     gap: 0.3rem;
     background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
+    color: var(--warning);
     padding: 0.2rem 0.6rem;
     border-radius: 999px;
     font-size: 0.7rem;
@@ -101,14 +107,14 @@
 .anexo-actions {
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #2a2a2a;
+    border-top: 1px solid var(--border-color);
 }
 
 .btn-download {
     width: 100%;
-    background: #2a2a2a;
-    border: 1px solid #333;
-    color: #fff;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 0.6rem;
     border-radius: 8px;
     display: flex;
@@ -120,14 +126,16 @@
 }
 
 .btn-download:hover {
-    background-color: #0369a1;
+    background-color: var(--primary);
+    color: white;
     transform: translateY(-2px);
+    border-color: var(--primary);
 }
 
 .btn-delete-icon {
     background: none;
     border: none;
-    color: #ef4444;
+    color: var(--danger);
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
@@ -153,7 +161,7 @@
     gap: 0.6rem;
     cursor: pointer;
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--text-secondary);
 }
 
 .checkbox-label input {

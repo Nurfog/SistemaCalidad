@@ -146,6 +146,19 @@ foreach ($dir in $directorios) {
     }
 }
 
+# 4.1.1 Crear carpeta Logs explícitamente (Requerido por Serilog)
+try {
+    Write-Host "📂 Verificando carpeta 'Logs'..." -ForegroundColor Yellow
+    $uri = [System.Uri]($ftpServerBase.TrimEnd('/') + "/Logs")
+    $request = [System.Net.FtpWebRequest]::Create($uri)
+    $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+    $request.Method = [System.Net.WebRequestMethods+Ftp]::MakeDirectory
+    $request.GetResponse().Close()
+    Write-Host "➕ Carpeta Logs creada." -ForegroundColor Green
+} catch {
+    # Ignorar si ya existe
+}
+
 # 4.2 Subir archivos
 Write-Host "`n🚚 Iniciando transferencia de archivos..." -ForegroundColor Yellow
 

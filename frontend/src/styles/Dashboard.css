@@ -1,5 +1,7 @@
+/* Dashboard.css - Updated */
 .dashboard-page {
     animation: fadeIn 0.8s ease-out;
+    color: var(--text-primary);
 }
 
 @keyframes fadeIn {
@@ -22,10 +24,11 @@
     font-size: 2rem;
     font-weight: 600;
     margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .dashboard-header p {
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 .stats-grid {
@@ -36,9 +39,8 @@
 }
 
 .stat-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 24px;
     display: flex;
@@ -46,11 +48,12 @@
     gap: 20px;
     position: relative;
     transition: transform 0.3s, border-color 0.3s;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
-    border-color: var(--primary-color);
+    border-color: var(--primary);
 }
 
 .stat-icon {
@@ -64,22 +67,22 @@
 
 .stat-icon.docs {
     background: rgba(56, 189, 248, 0.1);
-    color: var(--primary-color);
+    color: var(--primary);
 }
 
 .stat-icon.alerts {
     background: rgba(239, 68, 68, 0.1);
-    color: var(--danger-color);
+    color: var(--danger);
 }
 
 .stat-icon.check {
     background: rgba(16, 185, 129, 0.1);
-    color: var(--success-color);
+    color: var(--success);
 }
 
 .stat-icon.clock {
     background: rgba(129, 140, 248, 0.1);
-    color: var(--secondary-color);
+    color: var(--warning);
 }
 
 .stat-info {
@@ -89,20 +92,21 @@
 
 .stat-label {
     font-size: 0.85rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-bottom: 4px;
 }
 
 .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
+    color: var(--text-primary);
 }
 
 .card-badge {
     position: absolute;
     top: 12px;
     right: 12px;
-    background: var(--danger-color);
+    background: var(--danger);
     color: white;
     font-size: 0.65rem;
     padding: 2px 8px;
@@ -117,10 +121,11 @@
 }
 
 .content-card {
-    background: var(--card-bg);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 24px;
     padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .card-header {
@@ -133,12 +138,13 @@
 .card-header h3 {
     font-size: 1.1rem;
     font-weight: 600;
+    color: var(--text-primary);
 }
 
 .view-all {
     background: none;
     border: none;
-    color: var(--primary-color);
+    color: var(--primary);
     font-size: 0.85rem;
     cursor: pointer;
     display: flex;
@@ -154,7 +160,7 @@
 }
 
 .alert-item {
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--bg-primary);
     padding: 16px;
     border-radius: 16px;
     display: flex;
@@ -176,16 +182,17 @@
 
 .alert-text strong {
     font-size: 0.9rem;
+    color: var(--text-primary);
 }
 
 .alert-text span {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 .alert-tag {
     background: rgba(239, 68, 68, 0.1);
-    color: var(--danger-color);
+    color: var(--danger);
     font-size: 0.75rem;
     padding: 4px 10px;
     border-radius: 8px;
@@ -212,23 +219,23 @@
 }
 
 .area-name {
-    color: var(--text-main);
+    color: var(--text-primary);
 }
 
 .area-count {
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 .area-bar-container {
     height: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-primary);
     border-radius: 4px;
     overflow: hidden;
 }
 
 .area-bar {
     height: 100%;
-    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+    background: linear-gradient(to right, var(--primary), var(--primary-hover));
     border-radius: 4px;
     transition: width 1s ease-out;
 }
@@ -238,7 +245,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {
