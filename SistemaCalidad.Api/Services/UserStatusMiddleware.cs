@@ -26,7 +26,7 @@ public class UserStatusMiddleware
                 // Consultamos directamente el estado en el origen
                 // Consultamos directamente el estado en el origen (sige_sam_v3)
                 var user = await dbContext.UsuariosExternos
-                    .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
+                    .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email, Nombres, ApPaterno FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
                     .AsNoTracking()
                     .FirstOrDefaultAsync();
 

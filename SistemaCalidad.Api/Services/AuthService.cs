@@ -32,7 +32,7 @@ public class AuthService : IAuthService
         // 1. Buscar el usuario en el schema externo sige_sam_v3 utilizando idUsuario (RUT)
         // Seleccionamos campos específicos para evitar conflictos con columnas que no conocemos
         var usuarioExterno = await _context.UsuariosExternos
-            .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
+            .FromSqlRaw("SELECT idUsuario, Contrasena, Activo, Email, Nombres, ApPaterno FROM sige_sam_v3.usuario WHERE idUsuario = {0}", username)
             .FirstOrDefaultAsync();
 
         if (usuarioExterno == null) 
@@ -84,16 +84,20 @@ public class AuthService : IAuthService
         }
 
         // 4. Generar Token JWT Real
-        var token = GenerateJwtToken(usuarioExterno.usuario, permiso.Rol);
+        var fullName = $"{usuarioExterno.nombres} {usuarioExterno.apPaterno}".Trim();
+        if (string.IsNullOrEmpty(fullName)) fullName = usuarioExterno.usuario;
 
-        return (true, token, permiso.Rol, usuarioExterno.usuario);
+        var token = GenerateJwtToken(usuarioExterno.usuario, permiso.Rol, fullName);
+
+        return (true, token, permiso.Rol, fullName);
     }
 
-    private string GenerateJwtToken(string username, string role)
+    private string GenerateJwtToken(string username, string role, string fullName)
     {
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, username),
+            new Claim("FullName", fullName),
             new Claim(ClaimTypes.Role, role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

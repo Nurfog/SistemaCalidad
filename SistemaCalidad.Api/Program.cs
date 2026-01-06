@@ -15,26 +15,45 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 // Cargar variables desde .env al entorno del proceso
-DotNetEnv.Env.Load();
+// Usamos ContentRootPath que es más seguro en IIS
+var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+Console.WriteLine($"[Startup] Buscando archivo .env en: {envPath}");
 
-// Reemplazar placeholders en la configuración con variables de entorno reales
-var configuracionDict = new Dictionary<string, string>();
-var envVars = Environment.GetEnvironmentVariables();
-
-foreach (System.Collections.DictionaryEntry envVar in envVars)
+if (File.Exists(envPath))
 {
-    string key = envVar.Key.ToString()!;
-    string value = envVar.Value?.ToString() ?? "";
-
-    foreach (var config in builder.Configuration.AsEnumerable())
-    {
-        if (config.Value != null && config.Value.Contains("{" + key + "}"))
-        {
-            configuracionDict[config.Key] = config.Value.Replace("{" + key + "}", value);
-        }
-    }
+    DotNetEnv.Env.Load(envPath);
+    Console.WriteLine("[Startup] Archivo .env cargado.");
 }
-builder.Configuration.AddInMemoryCollection(configuracionDict!);
+else
+{
+    Console.WriteLine("[Startup] ⚠️ NO SE ENCONTRO EL ARCHIVO .env");
+}
+
+// Reemplazo explícito de la cadena de conexión (Más seguro que el loop genérico)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(connectionString))
+{
+    var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "";
+    var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "";
+    var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "";
+    var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "";
+    // Corregido: .env usa DB_PASS, no DB_PASSWORD
+    var dbPass = Environment.GetEnvironmentVariable("DB_PASS") ?? "";
+    
+    // Diagnóstico de contraseña (Seguro)
+    var passLog = string.IsNullOrEmpty(dbPass) ? "VACIO" : $"Longitud: {dbPass.Length}, Inicia: '{dbPass.FirstOrDefault()}', Termina: '{dbPass.LastOrDefault()}'";
+
+    Console.WriteLine($"[Startup] Variables cargadas - Host: {dbHost}, Port: {dbPort}, DB: {dbName}, User: {dbUser}");
+    Console.WriteLine($"[Startup] Password Debug: {passLog}");
+
+    connectionString = connectionString.Replace("{DB_HOST}", dbHost)
+                                     .Replace("{DB_NAME}", dbName)
+                                     .Replace("{DB_USER}", dbUser)
+                                     .Replace("{DB_PASS}", dbPass);
+    
+    // Sobrescribir la configuración en memoria
+    builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -42,8 +61,18 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // MySQL Connection
-// Configure JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "Clave_Por_Defecto_Muy_Larga_1234567890!";
+// Configure JWT Authentication - Leer desde variables de entorno
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"] ?? "Clave_Por_Defecto_Muy_Larga_1234567890!";
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? builder.Configuration["Jwt:Issuer"];
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["Jwt:Audience"];
+
+// Actualizar configuración en memoria
+builder.Configuration["Jwt:Key"] = jwtKey;
+builder.Configuration["Jwt:Issuer"] = jwtIssuer;
+builder.Configuration["Jwt:Audience"] = jwtAudience;
+
+Console.WriteLine($"[Startup] JWT Key Length: {jwtKey?.Length ?? 0} caracteres");
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -53,19 +82,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
 builder.Services.AddAuthorization();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
 Console.WriteLine($"Iniciando en modo: {(builder.Environment.IsDevelopment() ? "Desarrollo (AWS)" : "Producción (Localhost)")}");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 21))));
 
 // Health Checks
 builder.Services.AddHealthChecks()
@@ -81,10 +110,18 @@ if (useS3)
 {
     // Configurar AWS SDK
     var awsOptions = builder.Configuration.GetAWSOptions();
-    awsOptions.Region = Amazon.RegionEndpoint.GetBySystemName(builder.Configuration["FileStorage:S3:Region"]);
-    awsOptions.Credentials = new Amazon.Runtime.BasicAWSCredentials(
-        builder.Configuration["FileStorage:S3:AccessKey"], 
-        builder.Configuration["FileStorage:S3:SecretKey"]);
+    
+    // Obtener variables de entorno explícitamente (Usando las claves del .env)
+    var awsRegion = Environment.GetEnvironmentVariable("AWS_REGION") ?? builder.Configuration["FileStorage:S3:Region"];
+    var awsAccessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY") ?? builder.Configuration["FileStorage:S3:AccessKey"];
+    var awsSecretKey = Environment.GetEnvironmentVariable("AWS_SECRET_KEY") ?? builder.Configuration["FileStorage:S3:SecretKey"];
+    var bucketName = Environment.GetEnvironmentVariable("AWS_S3_BUCKET") ?? builder.Configuration["FileStorage:S3:BucketName"];
+
+    // Actualizar configuración en memoria para otros usos
+    builder.Configuration["FileStorage:S3:BucketName"] = bucketName;
+
+    awsOptions.Region = Amazon.RegionEndpoint.GetBySystemName(awsRegion);
+    awsOptions.Credentials = new Amazon.Runtime.BasicAWSCredentials(awsAccessKey, awsSecretKey);
     
     builder.Services.AddDefaultAWSOptions(awsOptions);
     builder.Services.AddAWSService<IAmazonS3>();

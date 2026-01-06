@@ -347,6 +347,98 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
+.accion-header {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.accion-status {
+    padding-top: 0.25rem;
+}
+
+.accion-main {
+    flex: 1;
+}
+
+.accion-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    gap: 0.75rem;
+    padding-left: 3rem;
+}
+
+.btn-success-mini {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-success-mini:hover {
+    background: #10b981;
+    color: white;
+}
+
+.verificacion-badge {
+    margin-top: 1.25rem;
+    margin-left: 3rem;
+    padding: 1.25rem;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    position: relative;
+}
+
+.verificacion-badge.eficaz {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.verificacion-badge.no-eficaz {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.verificacion-badge strong {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
+}
+
+.verificacion-badge p {
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.verificacion-badge .badge {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    font-size: 0.7rem;
+    font-weight: 800;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+}
+
+.verificacion-badge.eficaz .badge {
+    background: #10b981;
+    color: white;
+}
+
+.verificacion-badge.no-eficaz .badge {
+    background: #ef4444;
+    color: white;
+}
+
 @keyframes fadeInModal {
     from {
         opacity: 0;

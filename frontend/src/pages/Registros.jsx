@@ -226,7 +226,10 @@ const Registros = () => {
                                             <button
                                                 className="action-btn"
                                                 title="Descargar"
-                                                onClick={() => handleDownload(reg.id, reg.nombre + '.pdf')}
+                                                onClick={() => {
+                                                    const fileName = reg.rutaArchivo?.split('_').slice(1).join('_') || reg.nombre;
+                                                    handleDownload(reg.id, fileName);
+                                                }}
                                             >
                                                 <Download size={18} />
                                             </button>

@@ -63,7 +63,7 @@ public class AccionCalidad
     
     [ForeignKey("NoConformidadId")]
     [JsonIgnore]
-    public virtual NoConformidad NoConformidad { get; set; } = null!;
+    public virtual NoConformidad? NoConformidad { get; set; }
 
     [Required]
     public string Descripcion { get; set; } = string.Empty;

@@ -21,6 +21,12 @@ public class UsuarioExterno
     [Column("Email")]
     public string? email { get; set; } = string.Empty;
 
+    [Column("Nombres")]
+    public string? nombres { get; set; }
+
+    [Column("ApPaterno")]
+    public string? apPaterno { get; set; }
+
     [Required]
     [Column("Activo")]
     public int activo { get; set; } // 1 para activo, 0 para inactivo

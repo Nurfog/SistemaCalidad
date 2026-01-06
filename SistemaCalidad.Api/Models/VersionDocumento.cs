@@ -14,7 +14,7 @@ public class VersionDocumento
     
     [ForeignKey("DocumentoId")]
     [JsonIgnore]
-    public virtual Documento Documento { get; set; } = null!;
+    public virtual Documento? Documento { get; set; }
 
     public int NumeroVersion { get; set; }
 

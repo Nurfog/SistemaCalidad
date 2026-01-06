@@ -4,5 +4,5 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/SistemaCalidad/', // Base URL para IIS en subcarpeta
+  base: '/', // Base URL en raíz del dominio
 })

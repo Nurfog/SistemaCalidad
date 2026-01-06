@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { X, Save, Clock, CheckCircle2, AlertCircle, Plus, ClipboardList, User, Calendar } from 'lucide-react';
 import api from '../api/client';
 import '../styles/NCModal.css';
 
 const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [nuevoEstado, setNuevoEstado] = useState(nc?.estado || 0);
     const [analisis, setAnalisis] = useState(nc?.analisisCausa || '');
@@ -169,17 +171,76 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
 
                         <div className="acciones-list">
                             {nc.acciones && nc.acciones.length > 0 ? nc.acciones.map((acc, idx) => (
-                                <div key={idx} className="accion-item">
-                                    <div className="accion-status">
-                                        {acc.fechaEjecucion ? <CheckCircle2 className="text-success" size={18} /> : <Clock className="text-warning" size={18} />}
-                                    </div>
-                                    <div className="accion-details">
-                                        <p className="accion-desc">{acc.descripcion}</p>
-                                        <div className="accion-meta">
-                                            <span><User size={12} /> {acc.responsable}</span>
-                                            <span><Calendar size={12} /> Vence: {new Date(acc.fechaCompromiso).toLocaleDateString()}</span>
+                                <div key={idx} className="accion-item card-light">
+                                    <div className="accion-header">
+                                        <div className="accion-status">
+                                            {acc.fechaEjecucion ? <CheckCircle2 className="text-success" size={20} /> : <Clock className="text-warning" size={20} />}
+                                        </div>
+                                        <div className="accion-main">
+                                            <p className="accion-desc">{acc.descripcion}</p>
+                                            <div className="accion-meta">
+                                                <span><User size={12} /> {acc.responsable}</span>
+                                                <span><Calendar size={12} /> Vence: {new Date(acc.fechaCompromiso).toLocaleDateString()}</span>
+                                                {acc.fechaEjecucion && (
+                                                    <span className="text-success">
+                                                        <CheckCircle2 size={12} /> Ejecutado: {new Date(acc.fechaEjecucion).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* Botones de Acción */}
+                                    <div className="accion-actions">
+                                        {!acc.fechaEjecucion && (user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                                            <button
+                                                className="btn-success-mini"
+                                                onClick={async () => {
+                                                    if (window.confirm('¿Confirmar que esta acción ha sido ejecutada?')) {
+                                                        try {
+                                                            await api.patch(`/NoConformidades/acciones/${acc.id}/ejecutar`);
+                                                            onUpdate();
+                                                        } catch (error) {
+                                                            alert('Error al marcar ejecución');
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                Marcar Ejecución
+                                            </button>
+                                        )}
+
+                                        {acc.fechaEjecucion && !acc.observacionesVerificacion && user?.Rol === 'Administrador' && (
+                                            <button
+                                                className="btn-primary-mini"
+                                                onClick={() => {
+                                                    const obs = window.prompt('Ingrese observaciones de verificación de eficacia:');
+                                                    if (obs) {
+                                                        const eficaz = window.confirm('¿Fue la acción eficaz?');
+                                                        api.patch(`/NoConformidades/acciones/${acc.id}/verificar`, new URLSearchParams({
+                                                            esEficaz: eficaz,
+                                                            observaciones: obs
+                                                        }), {
+                                                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                                                        }).then(() => onUpdate());
+                                                    }
+                                                }}
+                                            >
+                                                Verificar Eficacia
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Resultado de Verificación */}
+                                    {acc.observacionesVerificacion && (
+                                        <div className={`verificacion-badge ${acc.esEficaz ? 'eficaz' : 'no-eficaz'}`}>
+                                            <strong>Verificación de Eficacia:</strong>
+                                            <p>{acc.observacionesVerificacion}</p>
+                                            <span className="badge">
+                                                {acc.esEficaz ? '✅ EFICAZ' : '❌ NO EFICAZ'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             )) : (
                                 <p className="empty-msg">No se han definido acciones para esta No Conformidad.</p>

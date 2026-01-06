@@ -350,7 +350,10 @@ const Documentos = () => {
                                             <button
                                                 className="action-btn"
                                                 title="Descargar"
-                                                onClick={() => handleDownload(doc.id, doc.titulo + '.pdf')}
+                                                onClick={() => {
+                                                    const versionActual = doc.revisiones?.find(r => r.esVersionActual);
+                                                    handleDownload(doc.id, versionActual?.nombreArchivo || `${doc.titulo}.pdf`);
+                                                }}
                                             >
                                                 <Download size={18} />
                                             </button>

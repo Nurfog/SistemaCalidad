@@ -78,4 +78,29 @@ public class NoConformidadesController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new { mensaje = "Estado actualizado exitosamente", estado = nc.Estado });
     }
+
+    [Authorize(Roles = "Escritor,Administrador")]
+    [HttpPatch("acciones/{accionId}/ejecutar")]
+    public async Task<IActionResult> EjecutarAccion(int accionId)
+    {
+        var accion = await _context.AccionesCalidad.FindAsync(accionId);
+        if (accion == null) return NotFound();
+
+        accion.FechaEjecucion = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return Ok(new { mensaje = "Acción marcada como ejecutada", fecha = accion.FechaEjecucion });
+    }
+
+    [Authorize(Roles = "Administrador")]
+    [HttpPatch("acciones/{accionId}/verificar")]
+    public async Task<IActionResult> VerificarAccion(int accionId, [FromForm] bool esEficaz, [FromForm] string observaciones)
+    {
+        var accion = await _context.AccionesCalidad.FindAsync(accionId);
+        if (accion == null) return NotFound();
+
+        accion.EsEficaz = esEficaz;
+        accion.ObservacionesVerificacion = observaciones;
+        await _context.SaveChangesAsync();
+        return Ok(new { mensaje = "Verificación de eficacia registrada", esEficaz = accion.EsEficaz });
+    }
 }

@@ -56,9 +56,19 @@ if (Test-Path "$proyectoDir\.env") {
     Write-Host "🔐 Incluyendo archivo .env en el paquete de subida..." -ForegroundColor Cyan
     Copy-Item "$proyectoDir\.env" -Destination "$publicacionDir\.env" -Force
     
-    # 2.1 Forzar entorno de Producción en el archivo subido
-    Write-Host "⚙️ Ajustando entorno a PRODUCCIÓN..." -ForegroundColor Cyan
-    (Get-Content "$publicacionDir\.env") -replace "ASPNETCORE_ENVIRONMENT=Development", "ASPNETCORE_ENVIRONMENT=Production" | Set-Content "$publicacionDir\.env"
+    # 2.1 Forzar entorno de Producción y Configurar BD AWS en el archivo subido
+    Write-Host "⚙️ Ajustando entorno a PRODUCCIÓN con BD AWS..." -ForegroundColor Cyan
+    $envContent = Get-Content "$publicacionDir\.env"
+    $envContent = $envContent -replace "ASPNETCORE_ENVIRONMENT=Development", "ASPNETCORE_ENVIRONMENT=Production"
+    $envContent = $envContent -replace "DB_HOST=localhost", "DB_HOST=ec2-18-222-25-254.us-east-2.compute.amazonaws.com"
+    $envContent = $envContent -replace "DB_PASS=Smith.3976!", "DB_PASS=Smith3976!"
+    $envContent | Set-Content "$publicacionDir\.env"
+}
+
+# 2.2 Copiar web.config personalizado (si existe) para debugging
+if (Test-Path "$proyectoDir\web.config") {
+    Write-Host "🔧 Incluyendo web.config personalizado (Logs activados)..." -ForegroundColor Cyan
+    Copy-Item "$proyectoDir\web.config" -Destination "$publicacionDir\web.config" -Force
 }
 
 # 3. Pedir Contraseña
@@ -71,6 +81,49 @@ $ftpPass = Read-Host "Ingrese Contrasena para el usuario $ftpUser" -AsSecureStri
 # Convertir password
 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($ftpPass)
 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
+
+# 3.1 Validar Credenciales antes de continuar
+Write-Host "🔍 Verificando conexión FTP..." -ForegroundColor Cyan
+try {
+    $uri = [System.Uri]($ftpServerBase.TrimEnd('/'))
+    $request = [System.Net.FtpWebRequest]::Create($uri)
+    $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+    $request.Method = [System.Net.WebRequestMethods+Ftp]::ListDirectory
+    $request.Timeout = 5000 # 5 segundos para probar
+    $response = $request.GetResponse()
+    $response.Close()
+    Write-Host "✅ Conexión exitosa, credenciales válidas." -ForegroundColor Green
+} catch {
+    Write-Host "❌ ERROR FATAL DE CONEXIÓN: $($_.Exception.Message)" -ForegroundColor Red
+    if ($_.Exception.Message -like "*530*") {
+        Write-Host "⚠️ La contraseña es incorrecta o el usuario está bloqueado." -ForegroundColor Yellow
+    }
+    Write-Host "⛔ Abortando despliegue para evitar bloqueos."
+    exit
+}
+
+# 4.0 Detener Aplicación (app_offline.htm)
+Write-Host "`n🛑 Deteniendo aplicación en el servidor para liberar archivos..." -ForegroundColor Yellow
+$offlineFile = "$publicacionDir\app_offline.htm"
+Set-Content $offlineFile "<html><body><h1>Actualizando Sistema...</h1><p>Por favor espere unos momentos.</p></body></html>"
+
+try {
+    $uri = [System.Uri]($ftpServerBase.TrimEnd('/') + "/app_offline.htm")
+    $request = [System.Net.FtpWebRequest]::Create($uri)
+    $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+    $request.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
+    
+    $fileBytes = [System.IO.File]::ReadAllBytes($offlineFile)
+    $request.ContentLength = $fileBytes.Length
+    $requestStream = $request.GetRequestStream()
+    $requestStream.Write($fileBytes, 0, $fileBytes.Length)
+    $requestStream.Close()
+    
+    Write-Host "✅ Aplicación detenida. Esperando 5 segundos..." -ForegroundColor Green
+    Start-Sleep -Seconds 5
+} catch {
+    Write-Host "⚠️ No se pudo subir app_offline.htm (¿Quizás ya existe?): $($_.Exception.Message)" -ForegroundColor Yellow
+}
 
 # 4.1 Crear estructura de carpetas primero
 Write-Host "`n📁 Verificando/Creando estructura de carpetas en el servidor..." -ForegroundColor Yellow
@@ -101,6 +154,8 @@ $total = $archivos.Count
 $actual = 0
 
 foreach ($archivo in $archivos) {
+    if ($archivo.Name -eq "app_offline.htm") { continue } # Ya lo subimos
+
     $actual++
     $nombreRelativo = $archivo.FullName.Substring($publicacionDir.Length + 1).Replace("\", "/")
     $urlDestino = ($ftpServerBase.TrimEnd('/') + "/" + $nombreRelativo)
@@ -114,7 +169,7 @@ foreach ($archivo in $archivos) {
         $request.UsePassive = $true
         $request.UseBinary = $true
         $request.KeepAlive = $false
-        $request.Timeout = 30000 # 30 segundos timeout
+        $request.Timeout = 30000 
 
         $fileBytes = [System.IO.File]::ReadAllBytes($archivo.FullName)
         $request.ContentLength = $fileBytes.Length
@@ -130,6 +185,19 @@ foreach ($archivo in $archivos) {
     } catch {
         Write-Host "❌ Error en $nombreRelativo : $($_.Exception.Message)" -ForegroundColor Red
     }
+}
+
+# 5. Reactivar Aplicación
+Write-Host "`n🟢 Reactivando aplicación..." -ForegroundColor Yellow
+try {
+    $uri = [System.Uri]($ftpServerBase.TrimEnd('/') + "/app_offline.htm")
+    $request = [System.Net.FtpWebRequest]::Create($uri)
+    $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+    $request.Method = [System.Net.WebRequestMethods+Ftp]::DeleteFile
+    $request.GetResponse().Close()
+    Write-Host "✅ ¡Aplicación iniciada exitosamente!" -ForegroundColor Green
+} catch {
+    Write-Host "⚠️ No se pudo eliminar app_offline.htm: $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
 Write-Host "`n----------------------------------------------------"
