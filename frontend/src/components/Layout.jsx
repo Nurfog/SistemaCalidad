@@ -1,5 +1,6 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
     Files,
@@ -10,13 +11,18 @@ import {
     User,
     ChevronRight,
     ShieldAlert,
-    FileText
+    FileText,
+    Sun,
+    Moon
 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import '../styles/Layout.css';
 
 const Layout = () => {
     const { user, logout } = useAuth();
+    const { isDarkMode, toggleTheme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const menuItems = [
         { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -71,6 +77,9 @@ const Layout = () => {
                     </div>
 
                     <div className="navbar-right">
+                        <button className="theme-toggle" onClick={toggleTheme}>
+                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
                         <div className="user-profile">
                             <div className="user-info">
                                 <span className="user-name">{user?.Nombre || 'Usuario'}</span>
@@ -85,7 +94,17 @@ const Layout = () => {
 
                 {/* Content Outlet */}
                 <div className="content-outlet">
-                    <Outlet />
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <Outlet />
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </main>
         </div>

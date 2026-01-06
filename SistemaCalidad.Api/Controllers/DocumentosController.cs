@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using SistemaCalidad.Api.Hubs;
 using SistemaCalidad.Api.Data;
 using SistemaCalidad.Api.Models;
 using SistemaCalidad.Api.Services;
@@ -17,13 +19,19 @@ public class DocumentosController : ControllerBase
     private readonly IFileStorageService _fileService;
     private readonly IAuditoriaService _auditoria;
     private readonly IEmailService _emailService;
+    private readonly IWatermarkService _watermarkService;
+    private readonly IHubContext<NotificacionHub> _hubContext;
+    private readonly IDocumentConverterService _converterService;
 
-    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService)
+    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService, IWatermarkService watermarkService, IHubContext<NotificacionHub> hubContext, IDocumentConverterService converterService)
     {
         _context = context;
         _fileService = fileService;
         _auditoria = auditoria;
         _emailService = emailService;
+        _watermarkService = watermarkService;
+        _hubContext = hubContext;
+        _converterService = converterService;
     }
 
     [HttpGet]
@@ -168,10 +176,45 @@ public class DocumentosController : ControllerBase
             if (versionVigente == null) return NotFound("No se encontró una versión activa.");
 
             var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
+            byte[] contenido;
+            using (var ms = new MemoryStream())
+            {
+                await datosArchivo.Content.CopyToAsync(ms);
+                contenido = ms.ToArray();
+            }
+
+            // Conversión y Marca de Agua
+            string extension = Path.GetExtension(versionVigente.NombreArchivo).ToLower();
+            string nombreDescarga = versionVigente.NombreArchivo;
+            string contentTypeDescarga = datosArchivo.ContentType;
+
+            if (extension == ".docx" || extension == ".txt" || extension == ".pdf")
+            {
+                try 
+                {
+                    // 1. Convertir a PDF si es necesario
+                    if (extension != ".pdf")
+                    {
+                        contenido = _converterService.ConvertToPdf(contenido, extension);
+                        nombreDescarga = Path.ChangeExtension(nombreDescarga, ".pdf");
+                        contentTypeDescarga = "application/pdf";
+                    }
+
+                    // 2. Aplicar Marca de Agua (Siempre, ya que ahora es PDF)
+                    contenido = _watermarkService.ApplyWatermark(contenido, User.Identity?.Name ?? "Usuario Anónimo", $"Documento: {documento.Codigo}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DocumentosController] Error CRITICO en procesamiento PDF: {ex}");
+                    // En este punto, si falla la seguridad (conversión/watermark), NO DEBEMOS entregar el archivo original.
+                    // Esto cumple el requisito "para que la opcion de seguridad se cumpla".
+                    return StatusCode(500, $"Error al procesar la seguridad del documento: {ex.Message}");
+                }
+            }
             
-            await _auditoria.RegistrarAccionAsync("DESCARGA", "Documento", id, $"Descargó {versionVigente.NombreArchivo} (v{versionVigente.NumeroVersion})");
+            await _auditoria.RegistrarAccionAsync("DESCARGA", "Documento", id, $"Descargó {nombreDescarga} (v{versionVigente.NumeroVersion})");
             
-            return File(datosArchivo.Content, datosArchivo.ContentType, versionVigente.NombreArchivo);
+            return File(contenido, contentTypeDescarga, nombreDescarga);
         }
         catch (Exception ex)
         {
@@ -194,6 +237,9 @@ public class DocumentosController : ControllerBase
         await _context.SaveChangesAsync();
 
         await _auditoria.RegistrarAccionAsync("SOLICITUD_REVISION", "Documento", id, "Envió documento a revisión");
+        
+        // Notificación en tiempo real
+        await _hubContext.Clients.All.SendAsync("ReceiveNotification", User.Identity?.Name, $"Nueva solicitud de revisión para: {documento.Titulo}");
         
         // Notificar a los administradores (ejemplo manual por ahora, se puede automatizar con los IDs)
         try {
@@ -231,6 +277,9 @@ public class DocumentosController : ControllerBase
         await _context.SaveChangesAsync();
         await _auditoria.RegistrarAccionAsync("APROBACION", "Documento", id, "Aprobó el documento formalmente");
 
+        // Notificación en tiempo real
+        await _hubContext.Clients.All.SendAsync("ReceiveNotification", "Admin", $"Documento aprobado: {documento.Titulo}");
+
         // Notificar al creador o al área pertinente
         try {
             await _emailService.SendEmailAsync("calidad@norteamericano.cl", 
@@ -262,6 +311,9 @@ public class DocumentosController : ControllerBase
 
         await _context.SaveChangesAsync();
         await _auditoria.RegistrarAccionAsync("RECHAZO", "Documento", id, $"Rechazó el documento. Obs: {observaciones}");
+
+        // Notificación en tiempo real
+        await _hubContext.Clients.All.SendAsync("ReceiveNotification", "Admin", $"Documento rechazado: {documento.Titulo}. Observación: {observaciones}");
 
         try {
             await _emailService.SendEmailAsync("calidad@norteamericano.cl", 

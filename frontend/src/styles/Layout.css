@@ -1,19 +1,21 @@
 .app-layout {
     display: flex;
     min-height: 100vh;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 /* Sidebar Styling */
 .sidebar {
     width: 280px;
-    background: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(10px);
-    border-right: 1px solid var(--glass-border);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     position: fixed;
     height: 100vh;
     z-index: 100;
+    transition: all 0.3s ease;
 }
 
 .sidebar-header {
@@ -25,16 +27,16 @@
     align-items: center;
     gap: 12px;
     font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-main);
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .brand-dot {
     width: 12px;
     height: 12px;
-    background: var(--primary-color);
+    background: var(--primary);
     border-radius: 50%;
-    box-shadow: 0 0 10px var(--primary-color);
+    box-shadow: 0 0 15px var(--primary);
 }
 
 .sidebar-nav {
@@ -42,7 +44,7 @@
     padding: 0 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
 }
 
 .nav-item {
@@ -50,19 +52,19 @@
     align-items: center;
     padding: 12px 16px;
     border-radius: 12px;
-    color: var(--text-muted);
-    transition: all 0.2s;
-    position: relative;
+    color: var(--text-secondary);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
+    background: var(--bg-primary);
+    color: var(--primary);
 }
 
 .nav-item.active {
-    background: rgba(56, 189, 248, 0.1);
-    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary);
     font-weight: 600;
 }
 
@@ -86,16 +88,16 @@
 }
 
 .sidebar-footer {
-    padding: 24px;
-    border-top: 1px solid var(--glass-border);
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
 }
 
 .logout-button {
     width: 100%;
     padding: 12px;
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger-color);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid transparent;
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -106,8 +108,8 @@
 }
 
 .logout-button:hover {
-    background: var(--danger-color);
-    color: white;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--danger);
 }
 
 /* Main Content Area */
@@ -119,33 +121,57 @@
 }
 
 .navbar {
-    height: 80px;
+    height: 70px;
     padding: 0 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(5px);
-    border-bottom: 1px solid var(--glass-border);
+    background: var(--bg-glass);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
     z-index: 50;
 }
 
 .page-title {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.theme-toggle {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-2px);
 }
 
 .user-profile {
     display: flex;
     align-items: center;
-    gap: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 8px 16px;
+    gap: 12px;
+    padding: 4px;
     border-radius: 40px;
-    border: 1px solid var(--glass-border);
 }
 
 .user-info {
@@ -155,28 +181,29 @@
 }
 
 .user-name {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
 }
 
 .user-role {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
 }
 
 .user-avatar {
     width: 36px;
     height: 36px;
-    background: var(--primary-color);
+    background: var(--primary);
     color: white;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
 }
 
 .content-outlet {
-    padding: 40px;
+    padding: 30px 40px;
     flex: 1;
 }
 

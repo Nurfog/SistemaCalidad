@@ -52,8 +52,33 @@ const Anexos = () => {
             link.remove();
         } catch (error) {
             console.error('Error descargando:', error);
-            const detail = typeof error.response?.data === 'string' ? error.response.data : 'Error desconocido';
+            let detail = 'Error desconocido';
+
+            if (error.response?.data instanceof Blob) {
+                // Si la respuesta es un Blob (común en descargas), lo leemos como texto
+                const text = await error.response.data.text();
+                detail = text || detail;
+            } else if (typeof error.response?.data === 'string') {
+                detail = error.response.data;
+            } else if (error.response?.data?.mensaje) {
+                detail = error.response.data.mensaje;
+            }
+
             alert('Error al descargar el anexo: ' + detail);
+        }
+    };
+
+    const handleDelete = async (id, nombre) => {
+        if (!window.confirm(`¿Estás seguro de que deseas eliminar la plantilla "${nombre}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            await api.delete(`/Anexos/${id}`);
+            fetchAnexos(); // Recargar lista
+        } catch (error) {
+            console.error('Error al eliminar:', error);
+            alert('No se pudo eliminar el anexo. Inténtalo de nuevo.');
         }
     };
 
@@ -114,6 +139,15 @@ const Anexos = () => {
                                     <Download size={18} />
                                     <span>Descargar</span>
                                 </button>
+                                {user?.Rol === 'Administrador' && (
+                                    <button
+                                        className="btn-delete-icon"
+                                        onClick={() => handleDelete(anexo.id, anexo.nombre)}
+                                        title="Eliminar plantilla"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </footer>
                         </div>
                     ))

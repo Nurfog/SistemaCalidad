@@ -42,7 +42,7 @@ public class AnexosController : ControllerBase
     {
         if (archivo == null) return BadRequest("El archivo de la plantilla es obligatorio.");
 
-        var rutaArchivo = await _fileService.SaveFileAsync(archivo.OpenReadStream(), archivo.FileName, "Plantillas");
+        var rutaArchivo = await _fileService.SaveFileAsync(archivo.OpenReadStream(), archivo.FileName, "Templates");
 
         var anexo = new Anexo
         {
@@ -81,6 +81,42 @@ public class AnexosController : ControllerBase
         {
             Console.WriteLine($"[AnexosController] Error descargando anexo {id}: {ex.Message}");
             return StatusCode(500, $"Error interno al descargar: {ex.Message}");
+        }
+    }
+
+    [Authorize(Roles = "Administrador")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteAnexo(int id)
+    {
+        try
+        {
+            var anexo = await _context.Anexos.FindAsync(id);
+            if (anexo == null) return NotFound("Anexo no encontrado.");
+
+            // 1. Intentar borrar de S3 si existe la ruta
+            if (!string.IsNullOrEmpty(anexo.RutaArchivo))
+            {
+                try {
+                    await _fileService.DeleteFileAsync(anexo.RutaArchivo);
+                } catch (Exception s3Ex) {
+                    Console.WriteLine($"[AnexosController] Error al borrar de S3 ({anexo.RutaArchivo}): {s3Ex.Message}");
+                    // Continuamos aunque falle S3 para permitir limpiar la DB si el archivo ya no esta
+                }
+            }
+
+            // 2. Borrar de la base de datos
+            _context.Anexos.Remove(anexo);
+            await _context.SaveChangesAsync();
+
+            // 3. Auditar
+            await _auditoria.RegistrarAccionAsync("ELIMINAR_PLANTILLA", "Anexo", id, $"Eliminó plantilla: {anexo.Nombre}");
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AnexosController] Error al eliminar anexo {id}: {ex.Message}");
+            return StatusCode(500, $"Error interno al eliminar: {ex.Message}");
         }
     }
 }

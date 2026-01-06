@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Amazon.S3;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using SistemaCalidad.Api.Data;
+using SistemaCalidad.Api.Models;
 
 namespace SistemaCalidad.Api.Controllers;
 
@@ -11,12 +14,14 @@ public class StatusController : ControllerBase
     private readonly HealthCheckService _healthCheckService;
     private readonly IAmazonS3? _s3Client;
     private readonly IConfiguration _configuration;
+    private readonly ApplicationDbContext _context;
 
-    public StatusController(HealthCheckService healthCheckService, IConfiguration configuration, IAmazonS3? s3Client = null)
+    public StatusController(HealthCheckService healthCheckService, IConfiguration configuration, ApplicationDbContext context, IAmazonS3? s3Client = null)
     {
         _healthCheckService = healthCheckService;
         _s3Client = s3Client;
         _configuration = configuration;
+        _context = context;
     }
 
     [AllowAnonymous]

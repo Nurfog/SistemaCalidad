@@ -7,12 +7,23 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Amazon.S3;
 using Amazon.Extensions.NETCore.Setup;
+using Serilog;
+using SistemaCalidad.Api.Middleware;
+using SistemaCalidad.Api.Hubs;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
     WebRootPath = "frontend_app" // Carpeta personalizada para el Frontend (evita conflicto con wwwroot del servidor)
 });
+
+builder.Host.UseSerilog();
 
 // Cargar variables desde .env al entorno del proceso
 // Usamos ContentRootPath que es más seguro en IIS
@@ -139,13 +150,21 @@ builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
+builder.Services.AddScoped<IWatermarkService, WatermarkService>();
+builder.Services.AddScoped<IDocumentConverterService, DocumentConverterService>();
 
 // CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-        builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+        builder => builder
+            .WithOrigins("http://localhost:5173", "http://localhost:5000", "http://localhost:5156") // Origenes comunes de Vite/VSC
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
 });
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -156,7 +175,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // Dashboard Premium para probar la API
 }
 
-// app.UseHttpsRedirection(); // Comentado para evitar problemas de CORS en localhost con HTTP
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseMiddleware<UserStatusMiddleware>(); // Validación de estado en tiempo real
@@ -167,6 +186,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapControllers();
+app.MapHub<NotificacionHub>("/hub/notificaciones");
 
 // Fallback para SPA (Cualquier ruta que no sea API va a index.html)
 app.MapFallbackToFile("index.html");

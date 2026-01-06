@@ -9,6 +9,7 @@ import UsuariosPage from './pages/UsuariosPage';
 import PanelAuditoriaExterna from './pages/PanelAuditoriaExterna';
 import Anexos from './pages/Anexos';
 import Layout from './components/Layout';
+import NotificationToast from './components/NotificationToast';
 
 // Componente para proteger rutas
 const PrivateRoute = ({ children }) => {
@@ -22,26 +23,29 @@ const PrivateRoute = ({ children }) => {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-      <Route path="/" element={
-        <PrivateRoute>
-          <Layout />
-        </PrivateRoute>
-      }>
-        <Route index element={<Dashboard />} />
-        <Route path="documentos" element={<Documentos />} />
-        <Route path="no-conformidades" element={<NoConformidades />} />
-        <Route path="registros" element={<Registros />} />
-        <Route path="usuarios" element={<UsuariosPage />} />
-        <Route path="trazabilidad" element={<PanelAuditoriaExterna />} />
-        <Route path="anexos" element={<Anexos />} />
-        {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
-      </Route>
+        <Route path="/" element={
+          <PrivateRoute>
+            <Layout />
+          </PrivateRoute>
+        }>
+          <Route index element={<Dashboard />} />
+          <Route path="documentos" element={<Documentos />} />
+          <Route path="no-conformidades" element={<NoConformidades />} />
+          <Route path="registros" element={<Registros />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="trazabilidad" element={<PanelAuditoriaExterna />} />
+          <Route path="anexos" element={<Anexos />} />
+          {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+      <NotificationToast />
+    </>
   );
 }
 
