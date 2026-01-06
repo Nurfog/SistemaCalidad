@@ -5,6 +5,10 @@ using SistemaCalidad.Api.Hubs;
 using SistemaCalidad.Api.Data;
 using SistemaCalidad.Api.Models;
 using SistemaCalidad.Api.Services;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using System.Text;
 
 using Microsoft.AspNetCore.Authorization;
 
@@ -22,8 +26,9 @@ public class DocumentosController : ControllerBase
     private readonly IWatermarkService _watermarkService;
     private readonly IHubContext<NotificacionHub> _hubContext;
     private readonly IDocumentConverterService _converterService;
+    private readonly IIAService _iaService;
 
-    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService, IWatermarkService watermarkService, IHubContext<NotificacionHub> hubContext, IDocumentConverterService converterService)
+    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService, IWatermarkService watermarkService, IHubContext<NotificacionHub> hubContext, IDocumentConverterService converterService, IIAService iaService)
     {
         _context = context;
         _fileService = fileService;
@@ -32,6 +37,7 @@ public class DocumentosController : ControllerBase
         _watermarkService = watermarkService;
         _hubContext = hubContext;
         _converterService = converterService;
+        _iaService = iaService;
     }
 
     [HttpGet]
@@ -343,9 +349,58 @@ public class DocumentosController : ControllerBase
 
         return Ok(new { mensaje = "Documento movido exitosamente." });
     }
+
+    [Authorize]
+    [HttpPost("{id}/chat")]
+    public async Task<IActionResult> ChatDocumento(int id, [FromBody] ChatRequest request)
+    {
+        try
+        {
+            var documento = await _context.Documentos.Include(d => d.Revisiones).FirstOrDefaultAsync(d => d.Id == id);
+            if (documento == null) return NotFound();
+
+            var versionVigente = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+            if (versionVigente == null) return NotFound("No se encontró una versión activa para analizar.");
+
+            // 1. Obtener el archivo físico
+            var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
+            
+            // 2. Extraer texto plano con iText7
+            var sb = new StringBuilder();
+            using (var stream = await datosArchivo.Content.ReadAsStreamAsync())
+            using (var pdfReader = new PdfReader(stream))
+            using (var pdfDoc = new PdfDocument(pdfReader))
+            {
+                var pages = pdfDoc.GetNumberOfPages();
+                for (int i = 1; i <= pages; i++)
+                {
+                    var page = pdfDoc.GetPage(i);
+                    var text = PdfTextExtractor.GetTextFromPage(page);
+                    sb.AppendLine(text);
+                }
+            }
+
+            string contenidoTexto = sb.ToString();
+
+            if (string.IsNullOrWhiteSpace(contenidoTexto))
+                return BadRequest("El documento no contiene texto legible (quizás es una imagen escaneada).");
+
+            // 3. Consultar a la IA
+            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, contenidoTexto);
+
+            await _auditoria.RegistrarAccionAsync("CONSULTA_IA", "Documento", id, $"Pregunta: {request.Pregunta}");
+
+            return Ok(new { respuesta });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DocumentosController] Error en Chat IA: {ex}");
+            return StatusCode(500, $"Error al procesar consulta con IA: {ex.Message}");
+        }
+    }
 }
 
-public class MoverDocumentoRequest
+public class ChatRequest
 {
-    public int? CarpetaId { get; set; }
+    public string Pregunta { get; set; }
 }

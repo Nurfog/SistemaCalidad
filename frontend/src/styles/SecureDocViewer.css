@@ -1,0 +1,157 @@
+/* SecureDocViewer.css */
+.secure-viewer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+    user-select: none;
+    /* Prevent text selection */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    backdrop-filter: blur(10px);
+}
+
+.secure-viewer-header {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: rgba(30, 41, 59, 0.8);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-primary);
+    z-index: 2001;
+}
+
+.doc-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.security-badge {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.close-viewer-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-viewer-btn:hover {
+    background: var(--danger);
+    transform: rotate(90deg);
+}
+
+.pdf-container {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem;
+    position: relative;
+}
+
+/* Capa transparente absoluta para bloquear clic derecho e interacción directa */
+.security-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2002;
+    background: transparent;
+}
+
+.pdf-page-wrapper {
+    position: relative;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    margin-bottom: 2rem;
+}
+
+/* Marca de agua repetitiva sobre el documento */
+.watermark-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: space-evenly;
+    justify-content: space-evenly;
+    overflow: hidden;
+    z-index: 2003;
+    opacity: 0.08;
+    /* Muy sutil */
+}
+
+.watermark-text {
+    transform: rotate(-45deg);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #000;
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* Controles de navegación */
+.viewer-controls {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    z-index: 2005;
+    /* Encima de la capa de seguridad en esa zona */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.viewer-controls button {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.viewer-controls button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}

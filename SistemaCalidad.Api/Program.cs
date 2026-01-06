@@ -152,6 +152,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IWatermarkService, WatermarkService>();
 builder.Services.AddScoped<IDocumentConverterService, DocumentConverterService>();
+builder.Services.AddHttpClient<IIAService, IAService>();
 
 // CORS
 builder.Services.AddCors(options =>

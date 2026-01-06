@@ -76,11 +76,9 @@ Write-Host "`n----------------------------------------------------"
 Write-Host "🌐 Autenticando para: $ftpServerBase"
 Write-Host "👤 Usuario: $ftpUser"
 Write-Host "----------------------------------------------------"
-$ftpPass = Read-Host "Ingrese Contrasena para el usuario $ftpUser" -AsSecureString
-
-# Convertir password
-$ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($ftpPass)
-$plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($ptr)
+# $ftpPass = Read-Host "Ingrese Contrasena para el usuario $ftpUser" -AsSecureString
+Write-Host "🔑 Usando credenciales automáticas." -ForegroundColor DarkGray
+$plainPass = "Aplicacionesichn88!"
 
 # 3.1 Validar Credenciales antes de continuar
 Write-Host "🔍 Verificando conexión FTP..." -ForegroundColor Cyan

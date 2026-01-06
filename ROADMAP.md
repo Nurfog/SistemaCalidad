@@ -66,3 +66,13 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 ## 📄 Documentación (Nueva ✅)
 - [x] **Manual de Usuario:** Guía visual para el personal administrativo.
 - [x] **README Técnico:** Instrucciones de despliegue y desarrollo.
+## 🔮 Roadmap v3: Inteligencia y Seguridad Visual (Planificado)
+- [ ] **Visor Documental Seguro (Zero-Trust):**
+  - [ ] Implementación de `react-pdf` para renderizado en Canvas (Evita selección de texto nativa).
+  - [ ] Capa de seguridad UI: Bloqueo de clic derecho, impresión y atajos de copia.
+  - [ ] Marca de agua "Visualización en Pantalla" para prevenir capturas de pantalla limpias.
+  - [ ] Modo "Solo Lectura Estricto": Streaming del PDF sin entregar la URL del archivo real.
+- [ ] **Inteligencia Artificial (Costo Cero / Low-Cost):**
+  - [ ] Investigación de APIs gratuitas (Google Gemini Flash / HuggingFace).
+  - [ ] **Chat Documental:** Índice de búsqueda semántica simple para responder preguntas sobre procedimientos.
+  - [ ] **Asistente de Redacción:** Sugerencias para corrección de redacción en No Conformidades.

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import DocumentModal from '../components/DocumentModal';
 import CarpetaDocumentoModal from '../components/CarpetaDocumentoModal';
+import SecureDocViewer from '../components/SecureDocViewer';
 import '../styles/Documentos.css';
 
 const Documentos = () => {
@@ -33,6 +34,10 @@ const Documentos = () => {
     // Estados para Modales
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCarpetaModalOpen, setIsCarpetaModalOpen] = useState(false);
+
+    // Estado Visor Seguro
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [selectedDocDetails, setSelectedDocDetails] = useState(null);
 
     const [activeMenu, setActiveMenu] = useState(null);
     const [filtros, setFiltros] = useState({
@@ -206,6 +211,23 @@ const Documentos = () => {
         try { await api.post(`/Documentos/${docId}/rechazar`, fd); fetchContenido(); setActiveMenu(null); } catch (e) { alert(e.response?.data?.mensaje); }
     };
 
+    // Manejo de Vista Previa Segura
+    const handleView = (doc) => {
+        const token = localStorage.getItem('token'); // Asumiendo que el token se guarda aquí
+        const fileConfig = {
+            url: `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/Documentos/${doc.id}/descargar`,
+            httpHeaders: {
+                'Authorization': `Bearer ${token}`
+            }
+        };
+        setSelectedDocDetails({
+            id: doc.id,
+            url: fileConfig,
+            name: doc.titulo
+        });
+        setViewerOpen(true);
+    };
+
     const getEstadoIcon = (estado) => {
         switch (estado) {
             case 0: return <Clock className="status-icon pending" size={16} />;
@@ -364,6 +386,15 @@ const Documentos = () => {
                                         <div className="action-buttons">
                                             <button
                                                 className="action-btn"
+                                                title="Vista Previa Segura"
+                                                onClick={() => handleView(doc)}
+                                                style={{ color: 'var(--primary)' }}
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+
+                                            <button
+                                                className="action-btn"
                                                 title="Descargar"
                                                 onClick={() => {
                                                     const versionActual = doc.revisiones?.find(r => r.esVersionActual);
@@ -429,6 +460,17 @@ const Documentos = () => {
                 onClose={() => setIsCarpetaModalOpen(false)}
                 onSave={handleSaveCarpeta}
             />
+
+            {/* Renderizar Visor Seguro si está activo */}
+            {viewerOpen && selectedDocDetails && (
+                <SecureDocViewer
+                    fileUrl={selectedDocDetails.url}
+                    fileName={selectedDocDetails.name}
+                    docId={selectedDocDetails.id}
+                    onClose={() => setViewerOpen(false)}
+                    user={user}
+                />
+            )}
         </div>
     );
 };
