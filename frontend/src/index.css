@@ -3,10 +3,13 @@
   --primary-hover: #1d4ed8;
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  /* Más oscuro que #1e293b */
+  --text-secondary: #475569;
+  /* Más oscuro para mejor lectura */
+  --border-color: #cbd5e1;
+  /* Más visible */
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;

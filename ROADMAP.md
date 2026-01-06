@@ -50,6 +50,19 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] **Integración Cloud:**
   - [x] Almacenamiento consolidado en Amazon S3 (Completado ✅).
 
+## 💎 Roadmap v2: Experiencia, Seguridad e Inteligencia (Completado ✅)
+- [x] **Infraestructura Robusta (Observabilidad):**
+  - [x] **Logging Estructurado:** Logs detallados de errores y eventos con `Serilog` (Archivos diarios y Consola).
+  - [x] **Manejo Global de Errores:** Middleware para estandarizar respuestas de error (RFC 7807) en toda la API.
+- [x] **Seguridad Avanzada de Documentos:**
+  - [x] **Conversión Automática:** Transformación forzada de documentos (.docx, .txt) a PDF al momento de la descarga.
+  - [x] **Marcas de Agua Dinámicas:** Inserción de sello "COPIA NO CONTROLADA", Usuario, Fecha y Código en cada página del PDF descargado.
+  - [x] **Políticas CORS estrictas:** Restricción de orígenes y exposición controlada de encabezados.
+- [x] **Experiencia de Usuario (Premium UX):**
+  - [x] **Tiempo Real:** Notificaciones instantáneas (SignalR) para solicitudes de revisión y aprobaciones.
+  - [x] **Dark Mode:** Interfaz adaptable con soporte para temas Claro/Oscuro persistente.
+  - [x] **Micro-interacciones:** Animaciones fluidas (Framer Motion) en transiciones y notificaciones.
+
 ## 📄 Documentación (Nueva ✅)
 - [x] **Manual de Usuario:** Guía visual para el personal administrativo.
 - [x] **README Técnico:** Instrucciones de despliegue y desarrollo.

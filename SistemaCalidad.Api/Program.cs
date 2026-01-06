@@ -161,7 +161,8 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:5173", "http://localhost:5000", "http://localhost:5156") // Origenes comunes de Vite/VSC
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials());
+            .AllowCredentials()
+            .WithExposedHeaders("Content-Disposition"));
 });
 
 builder.Services.AddSignalR();

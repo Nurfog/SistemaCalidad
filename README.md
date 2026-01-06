@@ -57,6 +57,23 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
 - **Exportación de Evidencia:** Generación de reportes en formato CSV del "Listado Maestro de Documentos" y "Registro de No Conformidades", listos para ser presentados ante auditores externos de SENCE o certificadoras.
 
 ---
+ 
+ ## 💎 Nuevas Capacidades (Roadmap v2)
+ 
+ ### 🛡️ Seguridad Avanzada de Documentos
+ - **Marcas de Agua Dinámicas:** Todo documento descargado recibe un sello indeleble con:
+   - Nombre del usuario que descarga.
+   - Fecha y hora exacta.
+   - Leyenda "COPIA NO CONTROLADA".
+ - **Conversión Forzada a PDF:** Para evitar la distribución de editables, los archivos de Word (.docx) y Texto (.txt) se convierten automáticamente a PDF en el servidor antes de ser entregados.
+ - **Manejo de Errores Seguro:** Si un documento no puede protegerse (conversión fallida), el sistema bloquea la descarga en lugar de entregar una versión insegura.
+ 
+ ### ⚡ Experiencia de Usuario Premium
+ - **Notificaciones en Tiempo Real (SignalR):** Alertas instantáneas en pantalla cuando un documento requiere aprobación o es rechazado, eliminando la necesidad de recargar la página.
+ - **Modo Oscuro Integrado:** Interfaz adaptable (Claro/Oscuro) que reduce la fatiga visual.
+ - **Observabilidad:** Logging estructurado con **Serilog** para auditoría forense de errores y eventos del sistema.
+ 
+ ---
 
 ## 🔐 Seguridad e Integración de Usuarios
 

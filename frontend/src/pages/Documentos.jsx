@@ -162,19 +162,32 @@ const Documentos = () => {
         fetchContenido();
     };
 
-    const handleDownload = async (docId, nombreArchivo) => {
+    const handleDownload = async (docId, nombreOriginal) => {
         try {
             const response = await api.get(`/Documentos/${docId}/descargar`, {
                 responseType: 'blob'
             });
+
+            // Intentar obtener el nombre real desde el header content-disposition
+            let filename = nombreOriginal || `documento_${docId}.pdf`;
+            const disposition = response.headers['content-disposition'];
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', nombreArchivo || `documento_${docId}.pdf`);
+            link.setAttribute('download', filename);
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (error) {
+            console.error(error);
             alert('Error al descargar el archivo.');
         }
     };
