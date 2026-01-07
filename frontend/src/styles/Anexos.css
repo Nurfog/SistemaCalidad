@@ -108,10 +108,13 @@
     margin-top: 1.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
 }
 
-.btn-download {
-    width: 100%;
+.btn-download,
+.btn-generate {
+    flex: 1;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -123,19 +126,31 @@
     gap: 0.5rem;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
 .btn-download:hover {
     background-color: var(--primary);
     color: white;
-    transform: translateY(-2px);
     border-color: var(--primary);
+}
+
+.btn-generate {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-generate:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
 }
 
 .btn-delete-icon {
     background: none;
     border: none;
-    color: var(--danger);
+    color: var(--text-muted);
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;

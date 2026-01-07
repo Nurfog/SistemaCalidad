@@ -3,6 +3,7 @@ import { Search, Download, Plus, FileText, AlertCircle, Trash2, ExternalLink } f
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AnexoModal from '../components/AnexoModal';
+import TemplateFormModal from '../components/TemplateFormModal';
 import '../styles/Anexos.css';
 
 const Anexos = () => {
@@ -11,6 +12,8 @@ const Anexos = () => {
     const [loading, setLoading] = useState(true);
     const [buscar, setBuscar] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
 
     const fetchAnexos = async () => {
         setLoading(true);
@@ -139,6 +142,19 @@ const Anexos = () => {
                                     <Download size={18} />
                                     <span>Descargar</span>
                                 </button>
+                                {anexo.formato.toUpperCase() === 'DOCX' && (
+                                    <button
+                                        className="btn-generate"
+                                        onClick={() => {
+                                            setSelectedTemplate(anexo);
+                                            setIsTemplateModalOpen(true);
+                                        }}
+                                        title="Generar documento desde esta plantilla"
+                                    >
+                                        <Plus size={18} />
+                                        <span>Generar</span>
+                                    </button>
+                                )}
                                 {user?.Rol === 'Administrador' && (
                                     <button
                                         className="btn-delete-icon"
@@ -163,6 +179,11 @@ const Anexos = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSaveAnexo}
+            />
+            <TemplateFormModal
+                isOpen={isTemplateModalOpen}
+                onClose={() => setIsTemplateModalOpen(false)}
+                template={selectedTemplate}
             />
         </div>
     );

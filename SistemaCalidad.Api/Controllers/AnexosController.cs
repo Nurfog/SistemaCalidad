@@ -15,12 +15,14 @@ public class AnexosController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IFileStorageService _fileService;
     private readonly IAuditoriaService _auditoria;
+    private readonly TemplateService _templateService;
 
-    public AnexosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria)
+    public AnexosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, TemplateService templateService)
     {
         _context = context;
         _fileService = fileService;
         _auditoria = auditoria;
+        _templateService = templateService;
     }
 
     [HttpGet]
@@ -117,6 +119,52 @@ public class AnexosController : ControllerBase
         {
             Console.WriteLine($"[AnexosController] Error al eliminar anexo {id}: {ex.Message}");
             return StatusCode(500, $"Error interno al eliminar: {ex.Message}");
+        }
+    }
+
+    [HttpGet("{id}/tags")]
+    public async Task<IActionResult> ScanTags(int id)
+    {
+        var anexo = await _context.Anexos.FindAsync(id);
+        if (anexo == null) return NotFound("Anexo no encontrado.");
+
+        if (anexo.Formato.ToUpper() != "DOCX")
+            return BadRequest("Solo se pueden escanear etiquetas en archivos DOCX.");
+
+        var datosArchivo = await _fileService.GetFileAsync(anexo.RutaArchivo);
+        using var memStream = new MemoryStream();
+        await datosArchivo.Content.CopyToAsync(memStream);
+        memStream.Position = 0;
+
+        var tags = _templateService.ExtractTags(memStream);
+        return Ok(tags);
+    }
+
+    [HttpPost("{id}/generar")]
+    public async Task<IActionResult> GenerarDocumento(int id, [FromBody] Dictionary<string, string> valores)
+    {
+        try
+        {
+            var anexo = await _context.Anexos.FindAsync(id);
+            if (anexo == null) return NotFound("Anexo no encontrado.");
+
+            if (anexo.Formato.ToUpper() != "DOCX")
+                return BadRequest("La generación automática solo está disponible para plantillas DOCX.");
+
+            var datosArchivo = await _fileService.GetFileAsync(anexo.RutaArchivo);
+            using var templateStream = new MemoryStream();
+            await datosArchivo.Content.CopyToAsync(templateStream);
+            
+            var generatedBytes = _templateService.GenerateDocument(templateStream.ToArray(), valores);
+            
+            await _auditoria.RegistrarAccionAsync("GENERAR_DOCUMENTO", "Anexo", id, $"Generó documento desde plantilla: {anexo.Nombre}");
+
+            var nombreFinal = $"{anexo.Nombre}_Generado_{DateTime.Now:yyyyMMdd_HHmm}.docx";
+            return File(generatedBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", nombreFinal);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error al generar documento: {ex.Message}");
         }
     }
 }

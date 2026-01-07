@@ -157,6 +157,7 @@ else
     Console.WriteLine("[Startup] ⚠️ ADVERTENCIA: No se detectó GOOGLE_AI_KEY. El chat inteligente no funcionará.");
 }
 
+builder.Services.AddSingleton<TemplateService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
