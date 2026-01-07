@@ -22,6 +22,9 @@ public class IAService : IIAService
 
     public async Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null)
     {
+        // 1. Asegurar que el usuario existe en OpenCCB
+        await AsegurarAutenticacion(usuario);
+
         var prompt = $@"
 Eres un experto en Gestión de Calidad para el Instituto Chileno Norteamericano (Norma NCh 2728).
 Tienes acceso al siguiente contenido de un documento oficial del sistema:
@@ -41,7 +44,7 @@ Pregunta: {pregunta}";
             username = usuario,
             prompt = prompt,
             session_id = sessionId,
-            use_kb = true // Activar RAG local si OpenCCB lo soporta por defecto
+            use_kb = true
         };
 
         var json = JsonSerializer.Serialize(requestBody);
@@ -57,17 +60,36 @@ Pregunta: {pregunta}";
                 throw new Exception($"Error en OpenCCB AI API: {response.StatusCode} - {error}");
             }
 
-            // Las respuestas de OpenCCB pueden venir como un stream de texto simple o JSON al final
-            var resultText = await response.Content.ReadAsStringAsync();
-            
-            // Si la respuesta contiene un JSON al final con el session_id, intentamos limpiarlo para el usuario
-            // aunque usualmente el usuario solo quiere el texto.
-            return resultText;
+            return await response.Content.ReadAsStringAsync();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IAService] Error conectando con la IA Local: {ex.Message}");
-            throw new Exception($"No se pudo conectar con el servicio de IA local en {_aiBaseUrl}. Asegúrate de que Ollama y la API de OpenCCB estén corriendo.");
+            var msg = $"Error al conversar con la IA en {_aiBaseUrl.TrimEnd('/')}/chat: {ex.Message}";
+            Console.WriteLine($"[IAService] {msg}");
+            throw new Exception(msg);
+        }
+    }
+
+    private async Task AsegurarAutenticacion(string usuario)
+    {
+        // Nota: OpenCCB AI parece usar un flujo simple de usuario.
+        // Intentamos registrar al usuario por si no existe (la API suele ignorar si ya existe o devuelve error controlado)
+        try
+        {
+            var regBody = new { username = usuario, password = "default_password_sgc" };
+            var regJson = JsonSerializer.Serialize(regBody);
+            var regContent = new StringContent(regJson, Encoding.UTF8, "application/json");
+            
+            // Intento de Registro (si falla porque ya existe, lo ignoramos y seguimos)
+            await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/register", regContent);
+            
+            // Intento de Login
+            await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/login", regContent);
+        }
+        catch (Exception ex)
+        {
+            // Logging silencioso, si el servicio no requiere login estricto para /chat seguiremos adelante
+            Console.WriteLine($"[IAService] Intento de autenticación para {usuario}: {ex.Message}");
         }
     }
 }

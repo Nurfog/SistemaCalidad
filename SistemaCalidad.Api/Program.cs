@@ -172,7 +172,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         builder => builder
-            .WithOrigins("http://localhost:5173", "http://localhost:5000", "http://localhost:5156") // Origenes comunes de Vite/VSC
+            .WithOrigins("http://localhost:5173", "http://localhost:5000", "http://localhost:5156", "https://calidad.norteamericano.cl")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials()

@@ -414,7 +414,8 @@ public class DocumentosController : ControllerBase
                 return BadRequest("El documento no contiene texto legible (quizás es una imagen escaneada).");
 
             // 3. Consultar a la IA
-            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, contenidoTexto);
+            var usuarioAi = User.Identity?.Name ?? "anonimo";
+            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, contenidoTexto, usuarioAi);
 
             await _auditoria.RegistrarAccionAsync("CONSULTA_IA", "Documento", id, $"Pregunta: {request.Pregunta}");
 
