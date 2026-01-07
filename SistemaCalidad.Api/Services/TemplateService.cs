@@ -47,7 +47,6 @@ public class TemplateService
                     }
                     foreach (var footerPart in mainPart.FooterParts)
                     {
-                        ReplaceInElement(footerPart.Footer); // Corregido: pasar values si fuera necesario, pero usemos una sobrecarga o pasemos values
                         ReplaceInElement(footerPart.Footer, values);
                     }
 

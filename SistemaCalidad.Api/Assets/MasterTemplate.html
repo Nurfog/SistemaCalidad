@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .header-table td {
+            border: 1px solid #000;
+            padding: 10px;
+            vertical-align: middle;
+        }
+        .logo-cell {
+            width: 150px;
+            text-align: center;
+        }
+        .title-cell {
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            background-color: #f3f4f6;
+        }
+        .info-cell {
+            width: 180px;
+            font-size: 11px;
+        }
+        .content {
+            margin-top: 20px;
+            text-align: justify;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            font-size: 9px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+        h1, h2, h3 {
+            color: #1e40af;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td rowspan="3" class="logo-cell">
+                <div style="font-weight: bold; color: #1e40af; font-size: 14px;">CHILENO<br>NORTEAMERICANO</div>
+                <div style="font-size: 9px;">SISTEMA DE GESTION<br>DE CALIDAD</div>
+            </td>
+            <td rowspan="3" class="title-cell">
+                {{TITULO}}
+            </td>
+            <td class="info-cell">
+                <strong>Código:</strong> {{CODIGO}}
+            </td>
+        </tr>
+        <tr>
+            <td class="info-cell">
+                <strong>Versión:</strong> {{VERSION}}
+            </td>
+        </tr>
+        <tr>
+            <td class="info-cell">
+                <strong>Fecha:</strong> {{FECHA}}
+            </td>
+        </tr>
+    </table>
+
+    <div class="content">
+        {{CONTENIDO}}
+    </div>
+
+    <div class="footer">
+        Documento controlado del Sistema de Gestión de Calidad. Prohibida su reproducción total o parcial sin autorización.
+    </div>
+</body>
+</html>

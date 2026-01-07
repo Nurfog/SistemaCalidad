@@ -435,6 +435,123 @@ public class DocumentosController : ControllerBase
             return StatusCode(500, mensajeUsuario);
         }
     }
+
+    [Authorize(Roles = "Administrador,Escritor,Responsable")]
+    [HttpPost("redactar")]
+    public async Task<IActionResult> RedactarDocumento([FromBody] RedactarDocumentoRequest request)
+    {
+        try
+        {
+            Documento documento;
+            int version;
+            string descripcionCambio = request.DescripcionCambio ?? "Creación desde redactor";
+
+            if (request.Id.HasValue)
+            {
+                // ACTUALIZACIÓN DE DOCUMENTO EXISTENTE
+                documento = await _context.Documentos.Include(d => d.Revisiones).FirstOrDefaultAsync(d => d.Id == request.Id.Value);
+                if (documento == null) return NotFound("Documento base no encontrado.");
+
+                // Desactivar versión anterior
+                var actual = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+                if (actual != null)
+                {
+                    actual.EsVersionActual = false;
+                    // También podríamos marcar el documento como 'En Revisión' si se desea flujo de aprobación
+                }
+
+                documento.VersionActual++;
+                documento.FechaActualizacion = DateTime.UtcNow;
+                documento.Estado = EstadoDocumento.Borrador; // Vuelve a borrador para revisión
+                version = documento.VersionActual;
+            }
+            else
+            {
+                // NUEVO DOCUMENTO
+                documento = new Documento
+                {
+                    Titulo = request.Titulo,
+                    Codigo = request.Codigo,
+                    Tipo = request.Tipo,
+                    Area = request.Area,
+                    CarpetaDocumentoId = request.CarpetaId,
+                    Estado = EstadoDocumento.Borrador,
+                    VersionActual = 1,
+                    FechaCreacion = DateTime.UtcNow
+                };
+                _context.Documentos.Add(documento);
+                await _context.SaveChangesAsync(); // Guardar para obtener el ID
+                version = 1;
+            }
+
+            // 1. Leer Plantilla Maestro
+            var masterPath = Path.Combine(Directory.GetCurrentDirectory(), "Assets", "MasterTemplate.html");
+            if (!System.IO.File.Exists(masterPath)) return StatusCode(500, "La plantilla maestro no existe en el servidor.");
+
+            var masterHtml = await System.IO.File.ReadAllTextAsync(masterPath);
+
+            // 2. Inyectar datos
+            var finalHtml = masterHtml
+                .Replace("{{TITULO}}", documento.Titulo)
+                .Replace("{{CODIGO}}", documento.Codigo)
+                .Replace("{{VERSION}}", version.ToString())
+                .Replace("{{FECHA}}", DateTime.Now.ToString("dd/MM/yyyy"))
+                .Replace("{{CONTENIDO}}", request.ContenidoHtml);
+
+            // 3. Generar PDF
+            byte[] pdfBytes;
+            using (var ms = new MemoryStream())
+            {
+                iText.Html2pdf.HtmlConverter.ConvertToPdf(finalHtml, ms);
+                pdfBytes = ms.ToArray();
+            }
+
+            // 4. Guardar archivo en S3/Local
+            var nombreArchivo = $"{documento.Codigo}_v{version}.pdf";
+            using (var pdfStream = new MemoryStream(pdfBytes))
+            {
+                var rutaArchivo = await _fileService.SaveFileAsync(pdfStream, nombreArchivo, "Documentos");
+
+                // 5. Crear nueva versión
+                var revision = new VersionDocumento
+                {
+                    DocumentoId = documento.Id,
+                    NumeroVersion = version,
+                    DescripcionCambio = descripcionCambio,
+                    NombreArchivo = nombreArchivo,
+                    RutaArchivo = rutaArchivo,
+                    TipoContenido = "application/pdf",
+                    EsVersionActual = true,
+                    CreadoPor = User.Identity?.Name ?? "Sistema",
+                    EstadoRevision = "Pendiente"
+                };
+
+                _context.VersionesDocumento.Add(revision);
+            }
+
+            await _context.SaveChangesAsync();
+            await _auditoria.RegistrarAccionAsync("REDACTAR_DOCUMENTO", "Documento", documento.Id, $"Redactó versión {version} de: {documento.Titulo}");
+
+            return Ok(documento);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DocumentosController] Error al redactar documento: {ex.Message}");
+            return StatusCode(500, $"Error al procesar el documento: {ex.Message}");
+        }
+    }
+}
+
+public class RedactarDocumentoRequest
+{
+    public int? Id { get; set; } // Opcional para actualizaciones
+    public string Titulo { get; set; } = string.Empty;
+    public string Codigo { get; set; } = string.Empty;
+    public TipoDocumento Tipo { get; set; }
+    public AreaProceso Area { get; set; }
+    public int? CarpetaId { get; set; }
+    public string ContenidoHtml { get; set; } = string.Empty;
+    public string? DescripcionCambio { get; set; }
 }
 
 public class ChatRequest

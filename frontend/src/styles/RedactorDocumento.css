@@ -1,0 +1,99 @@
+.redactor-container {
+    padding: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.redactor-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    align-items: start;
+}
+
+.metadata-panel {
+    padding: 1.5rem;
+    position: sticky;
+    top: 2rem;
+}
+
+.metadata-panel h3 {
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.editor-area {
+    background: white;
+    min-height: 700px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ajustes de React Quill */
+.quill {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ql-container {
+    flex: 1;
+    font-size: 1rem;
+    min-height: 600px;
+}
+
+.ql-toolbar {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    background: #f8fafc;
+}
+
+.ql-editor {
+    min-height: 600px;
+}
+
+/* Modal de Documentos Base */
+.doc-base-list {
+    list-style: none;
+    padding: 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.doc-base-list li {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: background 0.2s;
+}
+
+.doc-base-list li:hover {
+    background: var(--bg-app);
+}
+
+.doc-base-list li strong {
+    display: block;
+    color: var(--primary);
+}
+
+.doc-base-list li span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+    .redactor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .metadata-panel {
+        position: static;
+    }
+}

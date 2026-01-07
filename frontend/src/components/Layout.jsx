@@ -30,6 +30,7 @@ const Layout = () => {
         { name: 'Registros', path: '/registros', icon: <FileCheck size={20} /> },
         { name: 'No Conformidades', path: '/no-conformidades', icon: <ShieldAlert size={20} /> },
         { name: 'Anexos y Plantillas', path: '/anexos', icon: <FileText size={20} /> },
+        ...(user?.Rol === 'Administrador' || user?.Rol === 'Escritor' || user?.Rol === 'Responsable' ? [{ name: 'Redactor', path: '/redactar', icon: <FileText size={20} /> }] : []),
         ...(user?.Rol === 'Administrador' || user?.Rol === 'AuditorExterno' || user?.Rol === 'AuditorInterno' ? [{ name: 'Auditoría', path: '/auditoria', icon: <History size={20} /> }] : []),
         ...(user?.Rol === 'Administrador' ? [{ name: 'Usuarios', path: '/usuarios', icon: <User size={20} /> }] : []),
     ];

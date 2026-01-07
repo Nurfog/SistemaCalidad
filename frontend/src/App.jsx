@@ -8,6 +8,7 @@ import Registros from './pages/Registros';
 import UsuariosPage from './pages/UsuariosPage';
 import PanelAuditoriaExterna from './pages/PanelAuditoriaExterna';
 import Anexos from './pages/Anexos';
+import RedactorDocumento from './pages/RedactorDocumento';
 import Layout from './components/Layout';
 import NotificationToast from './components/NotificationToast';
 
@@ -39,6 +40,7 @@ function App() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="auditoria" element={<PanelAuditoriaExterna />} />
           <Route path="anexos" element={<Anexos />} />
+          <Route path="redactar/:baseId?" element={<RedactorDocumento />} />
           {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
         </Route>
 

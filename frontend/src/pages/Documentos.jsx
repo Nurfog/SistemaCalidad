@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
     Search,
     Download,
@@ -21,11 +22,13 @@ import {
 } from 'lucide-react';
 import DocumentModal from '../components/DocumentModal';
 import CarpetaDocumentoModal from '../components/CarpetaDocumentoModal';
+import RevisionModal from '../components/RevisionModal';
 import SecureDocViewer from '../components/SecureDocViewer';
 import '../styles/Documentos.css';
 
 const Documentos = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [documentos, setDocumentos] = useState([]);
     const [carpetas, setCarpetas] = useState([]); // Subcarpetas actuales
     const [loading, setLoading] = useState(true);
@@ -34,6 +37,8 @@ const Documentos = () => {
     // Estados para Modales
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCarpetaModalOpen, setIsCarpetaModalOpen] = useState(false);
+    const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+    const [selectedDocForRevision, setSelectedDocForRevision] = useState(null);
 
     // Estado Visor Seguro
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -211,6 +216,12 @@ const Documentos = () => {
         try { await api.post(`/Documentos/${docId}/rechazar`, fd); fetchContenido(); setActiveMenu(null); } catch (e) { alert(e.response?.data?.mensaje); }
     };
 
+    const triggerUploadRevision = (doc) => {
+        setSelectedDocForRevision(doc);
+        setIsRevisionModalOpen(true);
+        setActiveMenu(null);
+    };
+
     // Manejo de Vista Previa Segura
     const handleView = (doc) => {
         const token = localStorage.getItem('token'); // Asumiendo que el token se guarda aquí
@@ -278,9 +289,17 @@ const Documentos = () => {
                                 <span>Nueva Carpeta</span>
                             </button>
                         )}
-                        <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
-                            <Plus size={20} />
-                            <span>Nuevo Documento</span>
+                        {/* SOLO ADMIN PUEDE SUBIR ARCHIVOS EXTERNOS */}
+                        {user?.Rol === 'Administrador' && (
+                            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>
+                                <Plus size={20} />
+                                <span>Subir Archivo</span>
+                            </button>
+                        )}
+                        {/* TODOS LOS ROLES TECNICOS PUEDEN REDACTAR */}
+                        <button className="btn-primary" onClick={() => navigate('/redactar')}>
+                            <FileText size={20} />
+                            <span>Redactar Documento</span>
                         </button>
                     </div>
                 )}
@@ -429,6 +448,14 @@ const Documentos = () => {
                                                                 </button>
                                                             </>
                                                         )}
+                                                        <button onClick={() => navigate(`/redactar/${doc.id}`)}>
+                                                            <FileText size={14} /> Redactar Nueva Versión
+                                                        </button>
+                                                        {user?.Rol === 'Administrador' && (
+                                                            <button onClick={() => triggerUploadRevision(doc)}>
+                                                                <Download size={14} /> Subir Nueva Versión (vía Archivo)
+                                                            </button>
+                                                        )}
                                                         <button className="text-muted">
                                                             <Eye size={14} /> Ver Historial
                                                         </button>
@@ -460,6 +487,15 @@ const Documentos = () => {
                 onClose={() => setIsCarpetaModalOpen(false)}
                 onSave={handleSaveCarpeta}
             />
+            {selectedDocForRevision && (
+                <RevisionModal
+                    isOpen={isRevisionModalOpen}
+                    onClose={() => setIsRevisionModalOpen(false)}
+                    docId={selectedDocForRevision.id}
+                    docTitulo={selectedDocForRevision.titulo}
+                    onSave={fetchContenido}
+                />
+            )}
 
             {/* Renderizar Visor Seguro si está activo */}
             {viewerOpen && selectedDocDetails && (
