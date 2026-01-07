@@ -1,105 +1,160 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <style>
+        @page {
+            margin: 2cm;
+        }
+
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #333;
-            line-height: 1.5;
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            line-height: 1.6;
             margin: 0;
             padding: 0;
         }
+
+        .header-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            table-layout: fixed;
         }
+
         .header-table td {
             border: 1px solid #000;
-            padding: 10px;
+            padding: 8px;
             vertical-align: middle;
-        }
-        .logo-cell {
-            width: 150px;
             text-align: center;
-        }
-        .title-cell {
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            background-color: #f3f4f6;
-        }
-        .info-cell {
-            width: 180px;
             font-size: 11px;
         }
-        .content {
-            margin-top: 20px;
-            text-align: justify;
+
+        .logo-cell {
+            width: 25%;
         }
-        .footer {
-            position: fixed;
-            bottom: 0;
+
+        .title-cell {
+            width: 50%;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .meta-cell {
+            width: 25%;
+            padding: 0 !important;
+        }
+
+        .meta-inner-table {
             width: 100%;
-            font-size: 9px;
-            text-align: center;
-            color: #666;
-            border-top: 1px solid #ccc;
-            padding-top: 5px;
-        }
-        h1, h2, h3 {
-            color: #1e40af;
-        }
-        table {
-            width: 100%;
+            height: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            border: none;
         }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 8px;
+
+        .meta-inner-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 4px;
             text-align: left;
         }
-        th {
-            background-color: #f9fafb;
+
+        .meta-inner-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Colores institucionales según plantilla */
+        .bg-teal {
+            background-color: #E0F2F1;
+        }
+
+        .bg-gray {
+            background-color: #F5F5F5;
+            font-weight: bold;
+        }
+
+        .content {
+            margin-top: 10px;
+            text-align: justify;
+            font-size: 12px;
+        }
+
+        /* Estilos para el contenido del quill */
+        .content h2,
+        .content h3 {
+            background-color: #EEEEEE;
+            padding: 5px 10px;
+            border-left: 5px solid #006064;
+            color: #000;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: -1cm;
+            left: 0;
+            right: 0;
+            height: 20px;
+            font-size: 8px;
+            text-align: center;
+            color: #444;
+            border-top: 0.5px solid #999;
+            padding-top: 5px;
+        }
+
+        .logo-text {
+            color: #006064;
+            font-weight: bold;
+            line-height: 1;
         }
     </style>
 </head>
+
 <body>
-    <table class="header-table">
-        <tr>
-            <td rowspan="3" class="logo-cell">
-                <div style="font-weight: bold; color: #1e40af; font-size: 14px;">CHILENO<br>NORTEAMERICANO</div>
-                <div style="font-size: 9px;">SISTEMA DE GESTION<br>DE CALIDAD</div>
-            </td>
-            <td rowspan="3" class="title-cell">
-                {{TITULO}}
-            </td>
-            <td class="info-cell">
-                <strong>Código:</strong> {{CODIGO}}
-            </td>
-        </tr>
-        <tr>
-            <td class="info-cell">
-                <strong>Versión:</strong> {{VERSION}}
-            </td>
-        </tr>
-        <tr>
-            <td class="info-cell">
-                <strong>Fecha:</strong> {{FECHA}}
-            </td>
-        </tr>
-    </table>
+    <div class="header-container">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <div class="logo-text">
+                        INSTITUTO CHILENO<br>NORTEAMERICANO
+                    </div>
+                </td>
+                <td class="title-cell bg-teal">
+                    SISTEMA DE GESTIÓN DE CALIDAD<br>
+                    <span style="font-size: 16px;">{{TITULO}}</span>
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-inner-table">
+                        <tr>
+                            <td><strong>Código:</strong> {{CODIGO}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Versión:</strong> {{VERSION}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fecha:</strong> {{FECHA}}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
 
     <div class="content">
         {{CONTENIDO}}
     </div>
 
     <div class="footer">
-        Documento controlado del Sistema de Gestión de Calidad. Prohibida su reproducción total o parcial sin autorización.
+        Copia No Controlada. El usuario es responsable de verificar la vigencia de este documento en el Sistema de
+        Gestión de Calidad.
     </div>
 </body>
+
 </html>

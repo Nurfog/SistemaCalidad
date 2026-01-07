@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            margin: 2cm;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            color: #000;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .header-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            vertical-align: middle;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .logo-cell {
+            width: 25%;
+        }
+
+        .title-cell {
+            width: 50%;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .meta-cell {
+            width: 25%;
+            padding: 0 !important;
+        }
+
+        .meta-inner-table {
+            width: 100%;
+            height: 100%;
+            border-collapse: collapse;
+            border: none;
+        }
+
+        .meta-inner-table td {
+            border: none;
+            border-bottom: 1px solid #000;
+            padding: 4px;
+            text-align: left;
+        }
+
+        .meta-inner-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Colores institucionales según plantilla */
+        .bg-teal {
+            background-color: #E0F2F1;
+        }
+
+        .bg-gray {
+            background-color: #F5F5F5;
+            font-weight: bold;
+        }
+
+        .content {
+            margin-top: 10px;
+            text-align: justify;
+            font-size: 12px;
+        }
+
+        /* Estilos para el contenido del quill */
+        .content h2,
+        .content h3 {
+            background-color: #EEEEEE;
+            padding: 5px 10px;
+            border-left: 5px solid #006064;
+            color: #000;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: -1cm;
+            left: 0;
+            right: 0;
+            height: 20px;
+            font-size: 8px;
+            text-align: center;
+            color: #444;
+            border-top: 0.5px solid #999;
+            padding-top: 5px;
+        }
+
+        .logo-text {
+            color: #006064;
+            font-weight: bold;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-container">
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    <div class="logo-text">
+                        INSTITUTO CHILENO<br>NORTEAMERICANO
+                    </div>
+                </td>
+                <td class="title-cell bg-teal">
+                    SISTEMA DE GESTIÓN DE CALIDAD<br>
+                    <span style="font-size: 16px;">{{TITULO}}</span>
+                </td>
+                <td class="meta-cell">
+                    <table class="meta-inner-table">
+                        <tr>
+                            <td><strong>Código:</strong> {{CODIGO}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Versión:</strong> {{VERSION}}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fecha:</strong> {{FECHA}}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="content">
+        {{CONTENIDO}}
+    </div>
+
+    <div class="footer">
+        Copia No Controlada. El usuario es responsable de verificar la vigencia de este documento en el Sistema de
+        Gestión de Calidad.
+    </div>
+</body>
+
+</html>

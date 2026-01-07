@@ -6,25 +6,24 @@ namespace SistemaCalidad.Api.Services;
 
 public interface IIAService
 {
-    Task<string> GenerarRespuesta(string pregunta, string contextoDocumento);
+    Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null);
 }
 
 public class IAService : IIAService
 {
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-    private const string ModelUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+    private readonly string _aiBaseUrl;
 
     public IAService(IConfiguration configuration, HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _apiKey = configuration["GoogleAI:ApiKey"] ?? throw new ArgumentNullException("GoogleAI:ApiKey no está configurada.");
+        _aiBaseUrl = configuration["AI_API_URL"] ?? "http://localhost:8000";
     }
 
-    public async Task<string> GenerarRespuesta(string pregunta, string contextoDocumento)
+    public async Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null)
     {
         var prompt = $@"
-Eres un experto en Gestión de Calidad (Norma NCh 2728).
+Eres un experto en Gestión de Calidad para el Instituto Chileno Norteamericano (Norma NCh 2728).
 Tienes acceso al siguiente contenido de un documento oficial del sistema:
 
 --- INICIO DOCUMENTO ---
@@ -39,59 +38,36 @@ Pregunta: {pregunta}";
 
         var requestBody = new
         {
-            contents = new[]
-            {
-                new { parts = new[] { new { text = prompt } } }
-            }
+            username = usuario,
+            prompt = prompt,
+            session_id = sessionId,
+            use_kb = true // Activar RAG local si OpenCCB lo soporta por defecto
         };
 
         var json = JsonSerializer.Serialize(requestBody);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.PostAsync($"{ModelUrl}?key={_apiKey}", content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            
-            // Manejo específico para Rate Limit (429)
-            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            {
-                throw new Exception("Has alcanzado el límite de solicitudes de Google AI. Por favor, espera 1-2 minutos antes de intentar nuevamente.");
-            }
-            
-            throw new Exception($"Error en Google AI API: {response.StatusCode} - {error}");
-        }
-
-        var jsonResponse = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(jsonResponse);
-        
-        // Navegar la respuesta de Gemini de forma segura
         try
         {
-            if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
+            var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/chat", content);
+
+            if (!response.IsSuccessStatusCode)
             {
-                var candidate = candidates[0];
-                if (candidate.TryGetProperty("content", out var candidateContent))
-                {
-                    if (candidateContent.TryGetProperty("parts", out var parts) && parts.GetArrayLength() > 0)
-                    {
-                        var text = parts[0].GetProperty("text").GetString();
-                        return text ?? "La IA generó una respuesta vacía.";
-                    }
-                }
-                else if (candidate.TryGetProperty("finishReason", out var finishReason))
-                {
-                    return $"La IA no pudo responder por motivos de seguridad o filtro. Razón: {finishReason.GetString()}";
-                }
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Error en OpenCCB AI API: {response.StatusCode} - {error}");
             }
+
+            // Las respuestas de OpenCCB pueden venir como un stream de texto simple o JSON al final
+            var resultText = await response.Content.ReadAsStringAsync();
             
-            return "No se pudo obtener una respuesta válida de Google AI (Sin candidatos).";
+            // Si la respuesta contiene un JSON al final con el session_id, intentamos limpiarlo para el usuario
+            // aunque usualmente el usuario solo quiere el texto.
+            return resultText;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[IAService] Error parseando respuesta: {ex}");
-            return $"Error al procesar la respuesta de la IA: {ex.Message}";
+            Console.WriteLine($"[IAService] Error conectando con la IA Local: {ex.Message}");
+            throw new Exception($"No se pudo conectar con el servicio de IA local en {_aiBaseUrl}. Asegúrate de que Ollama y la API de OpenCCB estén corriendo.");
         }
     }
 }

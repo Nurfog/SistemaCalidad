@@ -172,29 +172,42 @@ foreach ($archivo in $archivos) {
     $urlDestino = ($ftpServerBase.TrimEnd('/') + "/" + $nombreRelativo)
     
     Write-Host "[$actual/$total] 📤 Enviando: $nombreRelativo ..." -ForegroundColor Gray
-    try {
-        $uri = [System.Uri]$urlDestino
-        $request = [System.Net.FtpWebRequest]::Create($uri)
-        $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
-        $request.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
-        $request.UsePassive = $true
-        $request.UseBinary = $true
-        $request.KeepAlive = $false
-        $request.Timeout = 30000 
+    
+    $intentos = 0
+    $subido = $false
+    while (-not $subido -and $intentos -lt 3) {
+        $intentos++
+        try {
+            $uri = [System.Uri]$urlDestino
+            $request = [System.Net.FtpWebRequest]::Create($uri)
+            $request.Credentials = New-Object System.Net.NetworkCredential($ftpUser, $plainPass)
+            $request.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
+            $request.UsePassive = $true
+            $request.UseBinary = $true
+            $request.KeepAlive = $false
+            $request.Timeout = 60000 
+            $request.ReadWriteTimeout = 60000
 
-        $fileBytes = [System.IO.File]::ReadAllBytes($archivo.FullName)
-        $request.ContentLength = $fileBytes.Length
-        
-        $requestStream = $request.GetRequestStream()
-        $requestStream.Write($fileBytes, 0, $fileBytes.Length)
-        $requestStream.Close()
-        $requestStream.Dispose()
-        
-        $response = $request.GetResponse()
-        $response.Close()
-        $response.Dispose()
-    } catch {
-        Write-Host "❌ Error en $nombreRelativo : $($_.Exception.Message)" -ForegroundColor Red
+            $fileBytes = [System.IO.File]::ReadAllBytes($archivo.FullName)
+            $request.ContentLength = $fileBytes.Length
+            
+            $requestStream = $request.GetRequestStream()
+            $requestStream.Write($fileBytes, 0, $fileBytes.Length)
+            $requestStream.Close()
+            $requestStream.Dispose()
+            
+            $response = $request.GetResponse()
+            $response.Close()
+            $response.Dispose()
+            $subido = $true
+        } catch {
+            if ($intentos -lt 3) {
+                Write-Host "   ⚠️ Error en intento $intentos. Reintentando en 2 segundos..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 2
+            } else {
+                Write-Host "❌ Error persistente en $nombreRelativo : $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
     }
 }
 
