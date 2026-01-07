@@ -13,7 +13,7 @@ public class IAService : IIAService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
-    private const string ModelUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+    private const string ModelUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
     public IAService(IConfiguration configuration, HttpClient httpClient)
     {
@@ -53,6 +53,13 @@ Pregunta: {pregunta}";
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
+            
+            // Manejo específico para Rate Limit (429)
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                throw new Exception("Has alcanzado el límite de solicitudes de Google AI. Por favor, espera 1-2 minutos antes de intentar nuevamente.");
+            }
+            
             throw new Exception($"Error en Google AI API: {response.StatusCode} - {error}");
         }
 

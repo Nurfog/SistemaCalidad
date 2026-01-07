@@ -37,7 +37,7 @@ function App() {
           <Route path="no-conformidades" element={<NoConformidades />} />
           <Route path="registros" element={<Registros />} />
           <Route path="usuarios" element={<UsuariosPage />} />
-          <Route path="trazabilidad" element={<PanelAuditoriaExterna />} />
+          <Route path="auditoria" element={<PanelAuditoriaExterna />} />
           <Route path="anexos" element={<Anexos />} />
           {/* Futuras rutas: Auditoria, NoConformidades, etc. */}
         </Route>
