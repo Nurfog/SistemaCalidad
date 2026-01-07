@@ -127,6 +127,9 @@ public class DocumentosController : ControllerBase
         _context.VersionesDocumento.Add(revision);
         await _context.SaveChangesAsync();
 
+        // Disparar sincronización con IA (Base de Conocimiento)
+        _ = _iaService.SincronizarS3Async();
+
         return CreatedAtAction(nameof(GetDocumentos), new { id = documento.Id }, documento);
     }
 
@@ -160,6 +163,9 @@ public class DocumentosController : ControllerBase
 
         _context.VersionesDocumento.Add(revision);
         await _context.SaveChangesAsync();
+
+        // Disparar sincronización con IA (Base de Conocimiento)
+        _ = _iaService.SincronizarS3Async();
 
         return Ok(documento);
     }
@@ -532,6 +538,9 @@ public class DocumentosController : ControllerBase
 
             await _context.SaveChangesAsync();
             await _auditoria.RegistrarAccionAsync("REDACTAR_DOCUMENTO", "Documento", documento.Id, $"Redactó versión {version} de: {documento.Titulo}");
+
+            // Disparar sincronización con IA (Base de Conocimiento)
+            _ = _iaService.SincronizarS3Async();
 
             return Ok(documento);
         }

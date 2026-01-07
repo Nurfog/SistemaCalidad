@@ -7,23 +7,62 @@ namespace SistemaCalidad.Api.Services;
 public interface IIAService
 {
     Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null);
+    Task<string> SincronizarS3Async();
 }
 
 public class IAService : IIAService
 {
     private readonly HttpClient _httpClient;
     private readonly string _aiBaseUrl;
+    private readonly IConfiguration _configuration;
 
     public IAService(IConfiguration configuration, HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _aiBaseUrl = configuration["AI_API_URL"] ?? "http://localhost:8000";
+        _configuration = configuration;
+        _aiBaseUrl = Environment.GetEnvironmentVariable("AI_API_URL") 
+                     ?? configuration["AI_API_URL"] 
+                     ?? "http://localhost:8000";
+    }
+
+    public async Task<string> SincronizarS3Async()
+    {
+        var s3Config = new
+        {
+            aws_access_key_id = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY") ?? _configuration["FileStorage:S3:AccessKey"],
+            aws_secret_access_key = Environment.GetEnvironmentVariable("AWS_SECRET_KEY") ?? _configuration["FileStorage:S3:SecretKey"],
+            aws_region = Environment.GetEnvironmentVariable("AWS_REGION") ?? _configuration["FileStorage:S3:Region"] ?? "us-east-2",
+            bucket_name = Environment.GetEnvironmentVariable("AWS_S3_BUCKET") ?? _configuration["FileStorage:S3:BucketName"]
+        };
+
+        var json = JsonSerializer.Serialize(s3Config);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/s3/sync", content);
+            var result = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"Error sincronizando S3 con IA: {response.StatusCode} - {result}");
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[IAService] Error en sincronización S3: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null)
     {
-        // 1. Asegurar que el usuario existe en OpenCCB
-        await AsegurarAutenticacion(usuario);
+        // 1. Asegurar que el usuario de servicio existe en OpenCCB
+        // Usamos un usuario de servicio centralizado para evitar problemas de contraseñas de usuarios humanos
+        var serviceUser = Environment.GetEnvironmentVariable("AI_SERVICE_USER") ?? "sgc_sistema";
+        await AsegurarAutenticacion(serviceUser);
 
         var prompt = $@"
 Eres un experto en Gestión de Calidad para el Instituto Chileno Norteamericano (Norma NCh 2728).
@@ -41,7 +80,7 @@ Pregunta: {pregunta}";
 
         var requestBody = new
         {
-            username = usuario,
+            username = serviceUser,
             prompt = prompt,
             session_id = sessionId,
             use_kb = true
@@ -52,6 +91,7 @@ Pregunta: {pregunta}";
 
         try
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/chat", content);
 
             if (!response.IsSuccessStatusCode)
@@ -60,7 +100,11 @@ Pregunta: {pregunta}";
                 throw new Exception($"Error en OpenCCB AI API: {response.StatusCode} - {error}");
             }
 
-            return await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[IAService] Headers recibidos en {sw.Elapsed.TotalSeconds:F2}s. Leyendo contenido...");
+            var respuesta = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[IAService] Lectura completa en {sw.Elapsed.TotalSeconds:F2}s.");
+            
+            return respuesta;
         }
         catch (Exception ex)
         {
@@ -72,15 +116,14 @@ Pregunta: {pregunta}";
 
     private async Task AsegurarAutenticacion(string usuario)
     {
-        // Nota: OpenCCB AI parece usar un flujo simple de usuario.
-        // Intentamos registrar al usuario por si no existe (la API suele ignorar si ya existe o devuelve error controlado)
         try
         {
-            var regBody = new { username = usuario, password = "default_password_sgc" };
+            var pass = Environment.GetEnvironmentVariable("AI_SERVICE_PASS") ?? "sgc_sistema_pass_2026!";
+            var regBody = new { username = usuario, password = pass };
             var regJson = JsonSerializer.Serialize(regBody);
             var regContent = new StringContent(regJson, Encoding.UTF8, "application/json");
             
-            // Intento de Registro (si falla porque ya existe, lo ignoramos y seguimos)
+            // Intento de Registro (si falla porque ya existe, lo ignoramos)
             await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/register", regContent);
             
             // Intento de Login
@@ -88,8 +131,7 @@ Pregunta: {pregunta}";
         }
         catch (Exception ex)
         {
-            // Logging silencioso, si el servicio no requiere login estricto para /chat seguiremos adelante
-            Console.WriteLine($"[IAService] Intento de autenticación para {usuario}: {ex.Message}");
+            Console.WriteLine($"[IAService] Error de autenticación de servicio para {usuario}: {ex.Message}");
         }
     }
 }

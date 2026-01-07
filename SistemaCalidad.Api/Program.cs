@@ -145,16 +145,19 @@ else
     Console.WriteLine("💾 Almacenamiento configurado en: Local (Carpeta Storage)");
 }
 
-// Configuración de IA (Google Gemini)
+// Configuración de IA (Google Gemini / OpenCCB)
 var googleApiKey = Environment.GetEnvironmentVariable("GOOGLE_AI_KEY");
-if (!string.IsNullOrEmpty(googleApiKey))
+var aiApiUrl = Environment.GetEnvironmentVariable("AI_API_URL");
+
+if (!string.IsNullOrEmpty(googleApiKey)) builder.Configuration["GoogleAI:ApiKey"] = googleApiKey;
+if (!string.IsNullOrEmpty(aiApiUrl)) 
 {
-    builder.Configuration["GoogleAI:ApiKey"] = googleApiKey;
-    Console.WriteLine("[Startup] 🤖 IA configurada (Google Gemini)");
+    builder.Configuration["AI_API_URL"] = aiApiUrl;
+    Console.WriteLine($"[Startup] 🤖 IA configurada (OpenCCB AI via: {aiApiUrl})");
 }
-else
+else 
 {
-    Console.WriteLine("[Startup] ⚠️ ADVERTENCIA: No se detectó GOOGLE_AI_KEY. El chat inteligente no funcionará.");
+    Console.WriteLine("[Startup] ⚠️ ADVERTENCIA: No se detectó AI_API_URL. Usando localhost por defecto.");
 }
 
 builder.Services.AddSingleton<TemplateService>();
@@ -165,7 +168,10 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IWatermarkService, WatermarkService>();
 builder.Services.AddScoped<IDocumentConverterService, DocumentConverterService>();
-builder.Services.AddHttpClient<IIAService, IAService>();
+builder.Services.AddHttpClient<IIAService, IAService>(client => 
+{
+    client.Timeout = TimeSpan.FromMinutes(10); // Aumentar hasta 10 minutos por posibles retrasos en hardware local
+});
 
 // CORS
 builder.Services.AddCors(options =>
