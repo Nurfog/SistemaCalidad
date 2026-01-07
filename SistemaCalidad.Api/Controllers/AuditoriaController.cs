@@ -20,9 +20,41 @@ public class AuditoriaController : ControllerBase
 
     [Authorize(Roles = "Administrador,AuditorInterno,AuditorExterno")]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<AuditoriaAcceso>>> GetLogs()
+    public async Task<IActionResult> GetLogs()
     {
-        return await _context.AuditoriaAccesos.OrderByDescending(a => a.Fecha).Take(200).ToListAsync();
+        var logs = await _context.AuditoriaAccesos
+            .OrderByDescending(a => a.Fecha)
+            .Take(200)
+            .ToListAsync();
+
+        // Obtener IDs de usuarios únicos de los logs
+        var userIds = logs.Select(l => l.Usuario).Distinct().ToList();
+
+        // Buscar nombres en SIGE (External)
+        var usuariosExternos = await _context.UsuariosExternos
+            .Where(u => userIds.Contains(u.idUsuario))
+            .ToDictionaryAsync(u => u.idUsuario, u => $"{u.nombres} {u.apPaterno}".Trim());
+
+        // Buscar nombres en Usuarios Locales (Permisos)
+        var usuariosLocales = await _context.UsuariosPermisos
+            .Where(u => userIds.Contains(u.UsuarioIdExterno.ToString()))
+            .ToDictionaryAsync(u => u.UsuarioIdExterno.ToString(), u => u.NombreCompleto ?? u.UsuarioIdExterno.ToString());
+
+        // Mapear logs con nombres
+        var result = logs.Select(l => new {
+            l.Id,
+            l.Accion,
+            l.Entidad,
+            l.EntidadId,
+            l.Detalle,
+            l.Fecha,
+            l.IpOrigen,
+            Usuario = usuariosExternos.ContainsKey(l.Usuario) ? usuariosExternos[l.Usuario] : 
+                      usuariosLocales.ContainsKey(l.Usuario) ? usuariosLocales[l.Usuario] : 
+                      l.Usuario
+        });
+
+        return Ok(result);
     }
 
     [Authorize(Roles = "Administrador,AuditorInterno,AuditorExterno")]
