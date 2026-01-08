@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { X, Upload, FileText, CheckCircle } from 'lucide-react';
 import '../styles/DocumentModal.css';
 
-const DocumentModal = ({ isOpen, onClose, onSave }) => {
+const DocumentModal = ({ isOpen, onClose, onSave, nombreCarpeta }) => {
     const [formData, setFormData] = useState({
         titulo: '',
         codigo: '',
         tipo: '0', // Manual
         area: '0',  // Direccion
+        numeroRevision: '1' // Valor por defecto
     });
     const [archivo, setArchivo] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -30,6 +31,7 @@ const DocumentModal = ({ isOpen, onClose, onSave }) => {
         data.append('codigo', formData.codigo);
         data.append('tipo', formData.tipo);
         data.append('area', formData.area);
+        data.append('numeroRevision', formData.numeroRevision);
         data.append('archivo', archivo);
 
         try {
@@ -46,7 +48,10 @@ const DocumentModal = ({ isOpen, onClose, onSave }) => {
         <div className="modal-overlay">
             <div className="modal-content card">
                 <header className="modal-header">
-                    <h2>Nuevo Documento</h2>
+                    <div>
+                        <h2>Nuevo Documento</h2>
+                        {nombreCarpeta && <p className="text-muted" style={{ fontSize: '0.85rem' }}>Destino: <strong>{nombreCarpeta}</strong></p>}
+                    </div>
                     <button onClick={onClose} className="close-btn"><X size={20} /></button>
                 </header>
 
@@ -90,18 +95,31 @@ const DocumentModal = ({ isOpen, onClose, onSave }) => {
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>Área o Proceso</label>
-                        <select
-                            value={formData.area}
-                            onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                        >
-                            <option value="0">Dirección</option>
-                            <option value="1">Comercial</option>
-                            <option value="2">Operativa</option>
-                            <option value="3">Apoyo</option>
-                            <option value="4">Administrativa</option>
-                        </select>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label>Área o Proceso</label>
+                            <select
+                                value={formData.area}
+                                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                            >
+                                <option value="0">Dirección</option>
+                                <option value="1">Comercial</option>
+                                <option value="2">Operativa</option>
+                                <option value="3">Apoyo</option>
+                                <option value="4">Administrativa</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>N° de Revisión Inicial</label>
+                            <input
+                                type="number"
+                                required
+                                min="0"
+                                value={formData.numeroRevision}
+                                onChange={(e) => setFormData({ ...formData, numeroRevision: e.target.value })}
+                            />
+                            <span className="field-hint">Use 1 para nuevos, o el número actual si es migración.</span>
+                        </div>
                     </div>
 
                     <div className={`file-upload-zone ${archivo ? 'has-file' : ''}`}>

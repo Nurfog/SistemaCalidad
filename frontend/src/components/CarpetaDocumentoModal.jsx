@@ -3,7 +3,7 @@ import { X, Save, FolderPlus } from 'lucide-react';
 import '../styles/NCModal.css';
 
 // Reutilizamos el estilo de NCModal/CarpetaModal pero apuntando a la nueva API
-const CarpetaDocumentoModal = ({ isOpen, onClose, onSave }) => {
+const CarpetaDocumentoModal = ({ isOpen, onClose, onSave, nombreCarpetaPadre }) => {
     const [nombre, setNombre] = useState('');
     const [color, setColor] = useState('#fbbf24'); // Amber default
     const [loading, setLoading] = useState(false);
@@ -45,7 +45,11 @@ const CarpetaDocumentoModal = ({ isOpen, onClose, onSave }) => {
                         </div>
                         <div>
                             <h2>Nueva Carpeta</h2>
-                            <p>Organiza tus documentos</p>
+                            {nombreCarpetaPadre ? (
+                                <p className="text-muted" style={{ fontSize: '0.85rem' }}>Sub-carpeta en: <strong>{nombreCarpetaPadre}</strong></p>
+                            ) : (
+                                <p>Organiza tus documentos</p>
+                            )}
                         </div>
                     </div>
                     <button className="close-btn" onClick={onClose}>

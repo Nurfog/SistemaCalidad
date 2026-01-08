@@ -172,6 +172,7 @@ builder.Services.AddHttpClient<IIAService, IAService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(10); // Aumentar hasta 10 minutos por posibles retrasos en hardware local
 });
+builder.Services.AddHostedService<IASyncBackgroundService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -193,7 +194,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(); // Dashboard Premium para probar la API
+    app.MapScalarApiReference(); 
 }
 
 app.UseMiddleware<ExceptionMiddleware>();
@@ -206,8 +207,10 @@ app.UseAuthorization();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+Console.WriteLine("[Startup] Configurando endpoints...");
 app.MapControllers();
-app.MapHub<NotificacionHub>("/hub/notificaciones");
+app.MapHub<NotificacionHub>("/api/hub/notificaciones"); // Ruta sincronizada con el frontend
+Console.WriteLine("[Startup] Pipeline configurado completamente.");
 
 // Fallback para SPA (Cualquier ruta que no sea API va a index.html)
 app.MapFallbackToFile("index.html");

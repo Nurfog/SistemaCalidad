@@ -6,13 +6,17 @@ import {
     CheckCircle,
     Clock,
     ExternalLink,
-    ChevronRight
+    ChevronRight,
+    Cpu,
+    RefreshCw
 } from 'lucide-react';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [iaLoading, setIaLoading] = useState(false);
+    const [iaMessage, setIaMessage] = useState(null);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -28,6 +32,20 @@ const Dashboard = () => {
 
         fetchStats();
     }, []);
+
+    const handleSyncIA = async () => {
+        setIaLoading(true);
+        setIaMessage(null);
+        try {
+            await api.post('/IA/sincronizar');
+            setIaMessage({ text: 'Base de conocimientos actualizada con éxito.', type: 'success' });
+        } catch (error) {
+            console.error('Error al sincronizar IA:', error);
+            setIaMessage({ text: 'Error al sincronizar con la IA. Verifique conexión.', type: 'error' });
+        } finally {
+            setIaLoading(false);
+        }
+    };
 
     if (loading) return <div className="loading">Cargando estadísticas...</div>;
 
@@ -77,6 +95,32 @@ const Dashboard = () => {
             </div>
 
             <div className="dashboard-main-content">
+                {/* Panel de Control IA */}
+                <div className="content-card ia-section">
+                    <div className="card-header">
+                        <h3>Asistente Inteligente (RAG)</h3>
+                        <Cpu size={20} className="ia-icon-header" />
+                    </div>
+                    <div className="ia-content">
+                        <p className="ia-description">
+                            La base de conocimientos permite que la IA responda instantáneamente sobre cualquier documento del SGC sin necesidad de procesarlos uno por uno.
+                        </p>
+                        <div className="ia-status-box">
+                            <span className="status-label">Sincronización Automática:</span>
+                            <span className="status-value active">Cada 60 días</span>
+                        </div>
+                        <button
+                            className={`sync-button ${iaLoading ? 'loading' : ''}`}
+                            onClick={handleSyncIA}
+                            disabled={iaLoading}
+                        >
+                            {iaLoading ? 'Sincronizando...' : 'Sincronizar Manualmente'}
+                            <RefreshCw size={16} className={iaLoading ? 'spin' : ''} />
+                        </button>
+                        {iaMessage && <p className={`ia-message ${iaMessage.type}`}>{iaMessage.text}</p>}
+                    </div>
+                </div>
+
                 {/* Alertas Críticas */}
                 <div className="content-card alerts-section">
                     <div className="card-header">

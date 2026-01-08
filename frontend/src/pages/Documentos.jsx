@@ -15,14 +15,18 @@ import {
     Send,
     CheckCircle,
     FolderPlus,
-    Folder,
     ChevronRight,
-    ArrowLeft,
-    Trash2
+    Trash2,
+    Move,
+    LayoutGrid,
+    Search as SearchIcon
 } from 'lucide-react';
+
 import DocumentModal from '../components/DocumentModal';
 import CarpetaDocumentoModal from '../components/CarpetaDocumentoModal';
 import RevisionModal from '../components/RevisionModal';
+import MoveModal from '../components/MoveModal';
+import FolderTree from '../components/FolderTree';
 import SecureDocViewer from '../components/SecureDocViewer';
 import '../styles/Documentos.css';
 
@@ -30,7 +34,6 @@ const Documentos = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [documentos, setDocumentos] = useState([]);
-    const [carpetas, setCarpetas] = useState([]); // Subcarpetas actuales
     const [loading, setLoading] = useState(true);
     const [buscar, setBuscar] = useState('');
 
@@ -38,22 +41,22 @@ const Documentos = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCarpetaModalOpen, setIsCarpetaModalOpen] = useState(false);
     const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+
     const [selectedDocForRevision, setSelectedDocForRevision] = useState(null);
+    const [selectedDocForMove, setSelectedDocForMove] = useState(null);
 
     // Estado Visor Seguro
     const [viewerOpen, setViewerOpen] = useState(false);
     const [selectedDocDetails, setSelectedDocDetails] = useState(null);
 
     const [activeMenu, setActiveMenu] = useState(null);
-    const [filtros, setFiltros] = useState({
-        area: '',
-        tipo: '',
-        estado: ''
-    });
+    const [filtros, setFiltros] = useState({ area: '', tipo: '', estado: '' });
 
-    // Navegación de Carpetas (Recursiva)
-    const [carpetaActual, setCarpetaActual] = useState(null); // null = Raíz
-    const [breadcrumbs, setBreadcrumbs] = useState([]); // Historial de navegación
+    // Navegación de Carpetas
+    const [carpetaActual, setCarpetaActual] = useState(null);
+    const [refreshTreeKey, setRefreshTreeKey] = useState(0);
+    const [parentForNewFolder, setParentForNewFolder] = useState(null);
 
     const fetchContenido = async () => {
         setLoading(true);
@@ -63,18 +66,10 @@ const Documentos = () => {
                 area: filtros.area || undefined,
                 tipo: filtros.tipo || undefined,
                 estado: filtros.estado || undefined,
-                carpetaId: carpetaActual?.id || null // Filtro backend
+                carpetaId: carpetaActual?.id || null
             };
-
-            // Optimización: Carga en paralelo
-            const [resDocs, resCarpetas] = await Promise.all([
-                api.get('/Documentos', { params }),
-                !buscar ? api.get('/CarpetasDocumentos', { params: { parentId: carpetaActual?.id || null } }) : Promise.resolve({ data: [] })
-            ]);
-
-            setDocumentos(resDocs.data);
-            setCarpetas(resCarpetas.data);
-
+            const res = await api.get('/Documentos', { params });
+            setDocumentos(res.data);
         } catch (error) {
             console.error('Error al cargar contenido:', error);
         } finally {
@@ -83,430 +78,196 @@ const Documentos = () => {
     };
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchContenido();
-        }, 300); // Debounce más corto
-        return () => clearTimeout(timer);
+        fetchContenido();
     }, [buscar, filtros, carpetaActual]);
 
-    // --- Manejo de Drag and Drop ---
-    const handleDragStart = (e, doc) => {
-        e.dataTransfer.setData('docId', doc.id);
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault(); // Necesario para permitir Drop
-        e.dataTransfer.dropEffect = 'move';
-    };
-
-    const handleDrop = async (e, carpetaDestino) => {
-        e.preventDefault();
-        const docId = e.dataTransfer.getData('docId');
-        if (!docId) return;
-
-        // Evitar mover a la misma carpeta donde ya está (visual)
-        // Aunque el backend lo soportaría, es redundante.
-        // Aquí asumimos mover HACIA una subcarpeta visible.
-
-        try {
-            await api.put(`/Documentos/${docId}/mover`, { carpetaId: carpetaDestino.id });
-            // Recargar para quitar el documento de la vista actual
-            fetchContenido();
-        } catch (error) {
-            console.error('Error al mover documento:', error);
-            alert('Error al mover el documento.');
-        }
-    };
-
-    // --- Lógica de Carpetas ---
-    const handleEnterCarpeta = (carpeta) => {
-        setBreadcrumbs([...breadcrumbs, carpeta]);
+    const handleSelectFolder = (carpeta) => {
         setCarpetaActual(carpeta);
-        setBuscar(''); // Limpiar buscador al entrar para ver contenido
     };
 
-    const handleNavigateBreadcrumb = (index) => {
-        if (index === -1) {
-            setBreadcrumbs([]);
-            setCarpetaActual(null);
-        } else {
-            const newMigas = breadcrumbs.slice(0, index + 1);
-            setBreadcrumbs(newMigas);
-            setCarpetaActual(newMigas[newMigas.length - 1]);
+    const handleAddSubfolder = (parent) => {
+        setParentForNewFolder(parent);
+        setIsCarpetaModalOpen(true);
+    };
+
+    const handleDeleteFolder = async (carpeta) => {
+        if (user?.Rol !== 'Administrador') {
+            alert("Solo los administradores pueden eliminar carpetas.");
+            return;
         }
-    };
 
-    const handleSaveCarpeta = async (data) => {
+        const confirm = window.confirm(`¿Estás seguro de eliminar la carpeta "${carpeta.nombre}"? Esta acción no se puede deshacer y fallará si la carpeta tiene contenido.`);
+        if (!confirm) return;
+
         try {
-            // Adjuntar ParentId si estamos dentro de una carpeta
-            const payload = { ...data, parentId: carpetaActual?.id || null };
-            await api.post('/CarpetasDocumentos', payload);
+            await api.delete(`/CarpetasDocumentos/${carpeta.id}`);
+            setRefreshTreeKey(prev => prev + 1);
+            if (carpetaActual?.id === carpeta.id) setCarpetaActual(null);
             fetchContenido();
-        } catch (error) {
-            console.error(error);
-            alert('Error al crear carpeta');
+        } catch (err) {
+            console.error(err);
+            alert("Error al eliminar carpeta: " + (err.response?.data || err.message));
         }
     };
 
-    const handleDeleteCarpeta = async (e, id) => {
-        e.stopPropagation();
-        if (!confirm("¿Eliminar carpeta? Debe estar vacía.")) return;
-        try {
-            await api.delete(`/CarpetasDocumentos/${id}`);
-            fetchContenido();
-        } catch (error) {
-            alert(error.response?.data || "Error al eliminar");
-        }
-    };
-
-    // --- Lógica Documentos ---
     const handleSaveDocument = async (formData) => {
-        // Adjuntar carpeta actual
-        if (carpetaActual) {
-            formData.append('carpetaId', carpetaActual.id);
-        }
-        await api.post('/Documentos', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        if (carpetaActual) formData.append('carpetaId', carpetaActual.id);
+        await api.post('/Documentos', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         fetchContenido();
     };
 
     const handleDownload = async (docId, nombreOriginal) => {
         try {
-            const response = await api.get(`/Documentos/${docId}/descargar`, {
-                responseType: 'blob'
-            });
-
-            // Intentar obtener el nombre real desde el header content-disposition
-            let filename = nombreOriginal || `documento_${docId}.pdf`;
-            const disposition = response.headers['content-disposition'];
-            if (disposition && disposition.indexOf('attachment') !== -1) {
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                const matches = filenameRegex.exec(disposition);
-                if (matches != null && matches[1]) {
-                    filename = matches[1].replace(/['"]/g, '');
-                }
-            }
-
+            const response = await api.get(`/Documentos/${docId}/descargar`, { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', filename);
+            link.setAttribute('download', nombreOriginal || `documento.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
-        } catch (error) {
-            console.error(error);
-            alert('Error al descargar el archivo.');
-        }
+        } catch (error) { alert('Error al descargar'); }
     };
 
-    // Funciones de revisión (iguales)
-    const handleRequestReview = async (docId) => {
-        try { await api.post(`/Documentos/${docId}/solicitar-revision`); fetchContenido(); setActiveMenu(null); } catch (e) { alert(e.response?.data?.mensaje); }
-    };
-    const handleApprove = async (docId) => {
-        try { await api.post(`/Documentos/${docId}/aprobar`); fetchContenido(); setActiveMenu(null); } catch (e) { alert(e.response?.data?.mensaje); }
-    };
-    const handleReject = async (docId) => {
-        const obs = prompt('Observaciones:');
-        if (!obs) return;
-        const fd = new FormData(); fd.append('observaciones', obs);
-        try { await api.post(`/Documentos/${docId}/rechazar`, fd); fetchContenido(); setActiveMenu(null); } catch (e) { alert(e.response?.data?.mensaje); }
-    };
-
-    const triggerUploadRevision = (doc) => {
-        setSelectedDocForRevision(doc);
-        setIsRevisionModalOpen(true);
-        setActiveMenu(null);
-    };
-
-    // Manejo de Vista Previa Segura
     const handleView = (doc) => {
-        const token = localStorage.getItem('token'); // Asumiendo que el token se guarda aquí
-        const fileConfig = {
-            url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/Documentos/${doc.id}/descargar`,
-            httpHeaders: {
-                'Authorization': `Bearer ${token}`
-            }
-        };
+        const token = localStorage.getItem('token');
         setSelectedDocDetails({
             id: doc.id,
-            url: fileConfig,
+            url: { url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/Documentos/${doc.id}/descargar`, httpHeaders: { 'Authorization': `Bearer ${token}` } },
             name: doc.titulo
         });
         setViewerOpen(true);
     };
 
-    const getEstadoIcon = (estado) => {
-        switch (estado) {
-            case 0: return <Clock className="status-icon pending" size={16} />;
-            case 1: return <Clock className="status-icon review" size={16} />;
-            case 2: return <CheckCircle2 className="status-icon approved" size={16} />;
-            case 3: return <XCircle className="status-icon rejected" size={16} />;
-            case 4: return <FileText className="status-icon obsolete" size={16} />;
-            default: return null;
-        }
-    };
-
-    // Helpers visuales
-    const getAreaNombre = (area) => ['Dirección', 'Comercial', 'Operativa', 'Apoyo', 'Administrativa'][area] || 'GNR';
     const getEstadoNombre = (estado) => ['Borrador', 'En Revisión', 'Aprobado', 'Rechazado', 'Obsoleto'][estado] || 'Desc.';
-
+    const getAreaNombre = (area) => ['Dirección', 'Comercial', 'Operativa', 'Apoyo', 'Administrativa'][area] || 'GNR';
 
     return (
         <div className="documentos-page">
             <header className="page-header">
                 <div className="header-left">
-                    {/* BREADCRUMBS */}
-                    <div className="breadcrumbs">
-                        <h1
-                            onClick={() => handleNavigateBreadcrumb(-1)}
-                            className={carpetaActual ? 'crumb-link' : 'crumb-active'}
-                        >
-                            Documentos
-                        </h1>
-                        {breadcrumbs.map((c, i) => (
-                            <div key={c.id} style={{ display: 'flex', alignItems: 'center' }}>
-                                <ChevronRight size={16} className="text-muted" />
-                                <h1
-                                    onClick={() => handleNavigateBreadcrumb(i)}
-                                    className={i === breadcrumbs.length - 1 ? 'crumb-active' : 'crumb-link'}
-                                >
-                                    {c.nombre}
-                                </h1>
-                            </div>
-                        ))}
-                    </div>
-                    <p>Control de información documentada NCh 2728</p>
+                    <h1>Gestión Documental SGC</h1>
+                    <p>Explorador jerárquico de información documentada NCh 2728</p>
                 </div>
-                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor' || user?.Rol === 'Responsable') && (
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {user?.Rol === 'Administrador' && (
+                        <>
                             <button className="btn-secondary" onClick={() => setIsCarpetaModalOpen(true)}>
-                                <FolderPlus size={20} />
-                                <span>Nueva Carpeta</span>
+                                <FolderPlus size={18} /> Nueva Carpeta
                             </button>
-                        )}
-                        {/* SOLO ADMIN PUEDE SUBIR ARCHIVOS EXTERNOS */}
-                        {user?.Rol === 'Administrador' && (
-                            <button className="btn-secondary" onClick={() => setIsModalOpen(true)}>
-                                <Plus size={20} />
-                                <span>Subir Archivo</span>
+                            <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
+                                <Plus size={18} /> Subir Archivo
                             </button>
-                        )}
-                        {/* TODOS LOS ROLES TECNICOS PUEDEN REDACTAR */}
-                        <button className="btn-primary" onClick={() => navigate('/redactar')}>
-                            <FileText size={20} />
-                            <span>Redactar Documento</span>
-                        </button>
-                    </div>
-                )}
+                        </>
+                    )}
+                    <button className="btn-primary" onClick={() => navigate('/redactar')}>
+                        <FileText size={18} /> Redactar
+                    </button>
+                </div>
             </header>
 
-            <section className="toolbar">
-                <div className="search-box">
-                    <Search size={20} className="search-icon" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por código o título..."
-                        value={buscar}
-                        onChange={(e) => setBuscar(e.target.value)}
-                    />
-                </div>
-                {/* Filtros ... (Simplificados visualmente si se desea) */}
-            </section>
+            <div className="folders-layout">
+                {/* PANEL IZQUIERDO: ÁRBOL (ESTILO FILEZILLA) */}
+                <FolderTree
+                    onSelect={handleSelectFolder}
+                    selectedId={carpetaActual?.id || null}
+                    refreshKey={refreshTreeKey}
+                    onAddClick={handleAddSubfolder}
+                    onDeleteClick={handleDeleteFolder}
+                />
 
-            {/* --- ZONA DE CARPETAS --- */}
-            {!buscar && (
-                <div className="carpetas-grid" style={{ marginBottom: carpetas.length > 0 ? '2rem' : '0' }}>
-                    {/* Botón para subir nivel si no estamos en raíz */}
-                    {carpetaActual && (
-                        <div
-                            className="carpeta-card back-card"
-                            onClick={() => handleNavigateBreadcrumb(breadcrumbs.length - 2)}
-                        >
-                            <ArrowLeft size={24} />
-                            <span>Volver</span>
+                {/* PANEL DERECHO: CONTENIDO */}
+                <main className="main-content-explorer">
+                    <div className="explorer-toolbar">
+                        <div className="search-box" style={{ maxWidth: '300px' }}>
+                            <SearchIcon size={16} className="search-icon" />
+                            <input
+                                type="text"
+                                placeholder="Filtrar archivos..."
+                                value={buscar}
+                                onChange={(e) => setBuscar(e.target.value)}
+                            />
                         </div>
-                    )}
-
-                    {carpetas.map(carpeta => (
-                        <div
-                            key={carpeta.id}
-                            className="carpeta-card"
-                            onClick={() => handleEnterCarpeta(carpeta)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, carpeta)}
-                            style={{ borderColor: carpeta.color }}
-                        >
-                            <div className="carpeta-icon" style={{ color: carpeta.color }}>
-                                <Folder size={32} fill={carpeta.color} fillOpacity={0.2} />
-                            </div>
-                            <span className="carpeta-name">{carpeta.nombre}</span>
-
-                            {user?.Rol === 'Administrador' && (
-                                <button className="btn-delete-folder" onClick={(e) => handleDeleteCarpeta(e, carpeta.id)}>
-                                    <Trash2 size={14} />
-                                </button>
-                            )}
+                        <div className="current-folder-info" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            Ubicación: <strong>{carpetaActual ? carpetaActual.nombre : 'Raíz del Sistema'}</strong>
                         </div>
-                    ))}
-                </div>
-            )}
+                    </div>
 
-
-            <div className="table-container card">
-                {loading ? (
-                    <div className="table-loading">Cargando...</div>
-                ) : (
-                    <table className="master-table">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Título</th>
-                                <th>Área</th>
-                                <th>Versión</th>
-                                <th>Estado</th>
-                                <th>Actualizado</th>
-                                <th className="actions-col">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {documentos.length > 0 ? documentos.map((doc) => (
-                                <tr
-                                    key={doc.id}
-                                    draggable={user?.Rol === 'Administrador' || user?.Rol === 'Escritor'}
-                                    onDragStart={(e) => handleDragStart(e, doc)}
-                                    className="draggable-row"
-                                >
-                                    <td className="col-code"><strong>{doc.codigo}</strong></td>
-                                    <td className="col-title">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <FileText size={16} className="text-muted" />
-                                            {doc.titulo}
-                                        </div>
-                                    </td>
-                                    <td className="col-area">
-                                        <span className="area-tag">{getAreaNombre(doc.area)}</span>
-                                    </td>
-                                    <td className="col-version">v{doc.versionActual}.0</td>
-                                    <td className="col-status">
-                                        <div className={`status-pill state-${doc.estado}`}>
-                                            {getEstadoIcon(doc.estado)}
-                                            <span>{getEstadoNombre(doc.estado)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="col-date">
-                                        {new Date(doc.fechaActualizacion || doc.fechaCreacion).toLocaleDateString()}
-                                    </td>
-                                    <td className="col-actions">
-                                        <div className="action-buttons">
-                                            <button
-                                                className="action-btn"
-                                                title="Vista Previa Segura"
-                                                onClick={() => handleView(doc)}
-                                                style={{ color: 'var(--primary)' }}
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-
-                                            <button
-                                                className="action-btn"
-                                                title="Descargar"
-                                                onClick={() => {
-                                                    const versionActual = doc.revisiones?.find(r => r.esVersionActual);
-                                                    handleDownload(doc.id, versionActual?.nombreArchivo || `${doc.titulo}.pdf`);
-                                                }}
-                                            >
-                                                <Download size={18} />
-                                            </button>
-
-                                            <div className="menu-container">
-                                                <button
-                                                    className={`action-btn ${activeMenu === doc.id ? 'active' : ''}`}
-                                                    onClick={() => setActiveMenu(activeMenu === doc.id ? null : doc.id)}
-                                                >
-                                                    <MoreVertical size={18} />
-                                                </button>
-
-                                                {activeMenu === doc.id && (
-                                                    <div className="dropdown-menu">
-                                                        {doc.estado === 0 && (
-                                                            <button onClick={() => handleRequestReview(doc.id)}>
-                                                                <Send size={14} /> Solicitar Revisión
-                                                            </button>
+                    <div className="table-container">
+                        {loading ? (
+                            <div className="table-loading">Cargando archivos...</div>
+                        ) : (
+                            <table className="master-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Título</th>
+                                        <th>Área</th>
+                                        <th>Versión</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {documentos.length > 0 ? documentos.map(doc => (
+                                        <tr key={doc.id}>
+                                            <td style={{ color: 'var(--primary)', fontWeight: '600' }}>{doc.codigo}</td>
+                                            <td>{doc.titulo}</td>
+                                            <td><span className="area-tag">{getAreaNombre(doc.area)}</span></td>
+                                            <td>v{doc.versionActual}.0</td>
+                                            <td>
+                                                <span className={`status-pill state-${doc.estado}`}>
+                                                    {getEstadoNombre(doc.estado)}
+                                                </span>
+                                            </td>
+                                            <td className="col-actions">
+                                                <div className="action-buttons">
+                                                    <button className="action-btn" onClick={() => handleView(doc)}><Eye size={18} /></button>
+                                                    <button className="action-btn" onClick={() => handleDownload(doc.id, doc.nombreArchivoActual)}><Download size={18} /></button>
+                                                    <div className="menu-container">
+                                                        <button className="action-btn" onClick={() => setActiveMenu(activeMenu === doc.id ? null : doc.id)}><MoreVertical size={18} /></button>
+                                                        {activeMenu === doc.id && (
+                                                            <div className="dropdown-menu">
+                                                                <button onClick={() => { setSelectedDocForMove(doc); setIsMoveModalOpen(true); setActiveMenu(null); }}><Move size={14} /> Mover</button>
+                                                                <button onClick={() => navigate(`/redactar/${doc.id}`)}><FileText size={14} /> Editar</button>
+                                                            </div>
                                                         )}
-                                                        {doc.estado === 1 && (user?.Rol === 'Administrador' || user?.Rol === 'AuditorInterno') && (
-                                                            <>
-                                                                <button onClick={() => handleApprove(doc.id)} className="text-success">
-                                                                    <CheckCircle size={14} /> Aprobar
-                                                                </button>
-                                                                <button onClick={() => handleReject(doc.id)} className="text-error">
-                                                                    <XCircle size={14} /> Rechazar
-                                                                </button>
-                                                            </>
-                                                        )}
-                                                        <button onClick={() => navigate(`/redactar/${doc.id}`)}>
-                                                            <FileText size={14} /> Redactar Nueva Versión
-                                                        </button>
-                                                        {user?.Rol === 'Administrador' && (
-                                                            <button onClick={() => triggerUploadRevision(doc)}>
-                                                                <Download size={14} /> Subir Nueva Versión (vía Archivo)
-                                                            </button>
-                                                        )}
-                                                        <button className="text-muted">
-                                                            <Eye size={14} /> Ver Historial
-                                                        </button>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="7" className="empty-row">
-                                        {carpetaActual ? 'Carpeta vacía.' : 'No hay documentos en la raíz.'}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="6" className="empty-row">No hay documentos en esta carpeta.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </main>
             </div>
 
-            <DocumentModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSave={handleSaveDocument}
-            />
+            <DocumentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveDocument} nombreCarpeta={carpetaActual?.nombre} />
             <CarpetaDocumentoModal
                 isOpen={isCarpetaModalOpen}
-                onClose={() => setIsCarpetaModalOpen(false)}
-                onSave={handleSaveCarpeta}
+                onClose={() => { setIsCarpetaModalOpen(false); setParentForNewFolder(null); }}
+                nombreCarpetaPadre={parentForNewFolder?.nombre || carpetaActual?.nombre}
+                onSave={async (d) => {
+                    try {
+                        await api.post('/CarpetasDocumentos', {
+                            ...d,
+                            ParentId: parentForNewFolder?.id || carpetaActual?.id || null
+                        });
+                        setRefreshTreeKey(prev => prev + 1);
+                        fetchContenido();
+                    } catch (err) {
+                        console.error(err);
+                        alert("Error al crear la carpeta: " + (err.response?.data || err.message));
+                    }
+                }}
             />
-            {selectedDocForRevision && (
-                <RevisionModal
-                    isOpen={isRevisionModalOpen}
-                    onClose={() => setIsRevisionModalOpen(false)}
-                    docId={selectedDocForRevision.id}
-                    docTitulo={selectedDocForRevision.titulo}
-                    onSave={fetchContenido}
-                />
-            )}
-
-            {/* Renderizar Visor Seguro si está activo */}
-            {viewerOpen && selectedDocDetails && (
-                <SecureDocViewer
-                    fileUrl={selectedDocDetails.url}
-                    fileName={selectedDocDetails.name}
-                    docId={selectedDocDetails.id}
-                    onClose={() => setViewerOpen(false)}
-                    user={user}
-                />
-            )}
+            {selectedDocForRevision && <RevisionModal isOpen={isRevisionModalOpen} onClose={() => setIsRevisionModalOpen(false)} docId={selectedDocForRevision.id} docTitulo={selectedDocForRevision.titulo} onSave={fetchContenido} />}
+            {selectedDocForMove && <MoveModal isOpen={isMoveModalOpen} onClose={() => setIsMoveModalOpen(false)} docId={selectedDocForMove.id} docTitulo={selectedDocForMove.titulo} onSave={fetchContenido} />}
+            {viewerOpen && selectedDocDetails && <SecureDocViewer fileUrl={selectedDocDetails.url} fileName={selectedDocDetails.name} docId={selectedDocDetails.id} onClose={() => setViewerOpen(false)} user={user} />}
         </div>
     );
 };

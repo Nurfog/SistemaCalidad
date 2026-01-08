@@ -6,7 +6,7 @@ namespace SistemaCalidad.Api.Services;
 
 public interface IIAService
 {
-    Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null);
+    Task<string> GenerarRespuesta(string pregunta, string? contextoDocumento = null, string usuario = "sistema", string? sessionId = null);
     Task<string> SincronizarS3Async();
 }
 
@@ -57,33 +57,38 @@ public class IAService : IIAService
         }
     }
 
-    public async Task<string> GenerarRespuesta(string pregunta, string contextoDocumento, string usuario = "sistema", string? sessionId = null)
+    public async Task<string> GenerarRespuesta(string pregunta, string? contextoDocumento = null, string usuario = "sistema", string? sessionId = null)
     {
         // 1. Asegurar que el usuario de servicio existe en OpenCCB
-        // Usamos un usuario de servicio centralizado para evitar problemas de contraseñas de usuarios humanos
         var serviceUser = Environment.GetEnvironmentVariable("AI_SERVICE_USER") ?? "sgc_sistema";
         await AsegurarAutenticacion(serviceUser);
 
+        // Prompt optimizado para RAG y referencias
         var prompt = $@"
 Eres un experto en Gestión de Calidad para el Instituto Chileno Norteamericano (Norma NCh 2728).
-Tienes acceso al siguiente contenido de un documento oficial del sistema:
+Tu objetivo es ayudar al personal a encontrar información precisa dentro de los documentos oficiales del SGC.
 
---- INICIO DOCUMENTO ---
-{contextoDocumento}
---- FIN DOCUMENTO ---
+REGLAS DE RESPUESTA:
+1. Comienza con un breve comentario amable sobre lo que has encontrado (ej: ""He revisado los manuales y esto es lo que localicé sobre tu consulta..."").
+2. Si tienes acceso a la Base de Conocimientos, busca en todos los documentos relacionados.
+3. CITA SIEMPRE el nombre del archivo y, si es posible, la página o sección donde se encuentra la información.
+4. Si la consulta se refiere a varios archivos, lístalos claramente indicando qué aporta cada uno.
+5. Mantén un tono profesional pero cercano, no respondas de forma puramente robótica.
 
-Responde a la siguiente pregunta del usuario basándote ÚNICAMENTE en la información del documento anterior. 
-Si la respuesta no está en el documento, indica claramente que no se menciona.
-Se conciso, profesional y cita secciones si es posible.
+Pregunta del usuario: {pregunta}";
 
-Pregunta: {pregunta}";
+        // Si tenemos un contexto específico (ej: chat abierto sobre un documento específico), lo añadimos como refuerzo
+        if (!string.IsNullOrWhiteSpace(contextoDocumento))
+        {
+            prompt += $"\n\nContexto adicional del documento actual:\n{contextoDocumento}";
+        }
 
         var requestBody = new
         {
             username = serviceUser,
             prompt = prompt,
             session_id = sessionId,
-            use_kb = true
+            use_kb = true // Siempre usamos la base de conocimientos sincronizada de S3
         };
 
         var json = JsonSerializer.Serialize(requestBody);
@@ -92,6 +97,7 @@ Pregunta: {pregunta}";
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            // Aumentamos el tiempo de espera para que la IA local procese la búsqueda RAG
             var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/chat", content);
 
             if (!response.IsSuccessStatusCode)

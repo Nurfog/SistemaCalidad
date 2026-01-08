@@ -40,26 +40,82 @@ public class DocumentosController : ControllerBase
         _iaService = iaService;
     }
 
+    [Authorize(Roles = "Administrador")]
+    [HttpPost("reset-total")]
+    public async Task<IActionResult> ResetTotal()
+    {
+        try
+        {
+            Console.WriteLine("[Purga] Iniciando proceso de eliminación total...");
+
+            // 1. Obtener todas las versiones de documentos para borrar archivos físicos
+            var versiones = await _context.VersionesDocumento.ToListAsync();
+            int archivosBorrados = 0;
+
+            foreach (var version in versiones)
+            {
+                if (!string.IsNullOrEmpty(version.RutaArchivo))
+                {
+                    try
+                    {
+                        await _fileService.DeleteFileAsync(version.RutaArchivo);
+                        archivosBorrados++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Purga] Error al borrar archivo S3 {version.RutaArchivo}: {ex.Message}");
+                    }
+                }
+            }
+
+            // 2. Limpiar Base de Datos
+            _context.VersionesDocumento.RemoveRange(versiones);
+            var documentos = await _context.Documentos.ToListAsync();
+            _context.Documentos.RemoveRange(documentos);
+
+            await _context.SaveChangesAsync();
+
+            // 3. Registrar en Auditoría
+            await _auditoria.RegistrarAccionAsync("PURGA_TOTAL", "Sistema", 0, $"Se eliminaron {documentos.Count} documentos y {archivosBorrados} archivos físicos.");
+
+            // 4. Sincronizar IA (para que limpie su KB)
+            try
+            {
+                _ = _iaService.SincronizarS3Async();
+            }
+            catch { }
+
+            return Ok(new 
+            { 
+                mensaje = "Purga de sistema completada con éxito.", 
+                documentosEliminados = documentos.Count,
+                archivosFisicosEliminados = archivosBorrados
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Purga] Error crítico: {ex.Message}");
+            return StatusCode(500, $"Error durante la purga: {ex.Message}");
+        }
+    }
+
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Documento>>> GetDocumentos(
+    public async Task<ActionResult<IEnumerable<DocumentoDto>>> GetDocumentos(
         [FromQuery] string? buscar, 
         [FromQuery] TipoDocumento? tipo, 
         [FromQuery] AreaProceso? area, 
         [FromQuery] EstadoDocumento? estado,
-        [FromQuery] int? carpetaId) // Filtro por carpeta
+        [FromQuery] int? carpetaId)
     {
-        var query = _context.Documentos.Include(d => d.Revisiones).AsQueryable();
+        var query = _context.Documentos.AsNoTracking().AsQueryable();
 
-        // 0. Filtro por Carpeta (Si se envía null, se asume raíz o todos?
-        // Usualmente para navegar: si carpetaId es null, traer docs sin carpeta (o de raiz)
-        // Pero para búsquedas globales se podría ignorar.
-        // Haremos lógica de navegación: Si no hay termino de busqueda 'buscar', filtramos por carpeta.
+        // 0. Filtro por Carpeta
         if (string.IsNullOrWhiteSpace(buscar))
         {
             query = query.Where(d => d.CarpetaDocumentoId == carpetaId);
         }
 
-        // 1. Busqueda por texto (Código o Título)
+        // 1. Busqueda por texto
         if (!string.IsNullOrWhiteSpace(buscar))
         {
             query = query.Where(d => d.Codigo.Contains(buscar) || d.Titulo.Contains(buscar));
@@ -70,17 +126,34 @@ public class DocumentosController : ControllerBase
         if (area.HasValue) query = query.Where(d => d.Area == area.Value);
         if (estado.HasValue) query = query.Where(d => d.Estado == estado.Value);
 
-        // 3. Seguridad Granular por Roles
+        // 3. Seguridad Granular
         var isAdminOrAuditor = User.IsInRole("Administrador") || User.IsInRole("AuditorInterno") || User.IsInRole("AuditorExterno");
         var isResponsable = User.IsInRole("Responsable");
 
         if (!isAdminOrAuditor && !isResponsable)
         {
-            // Usuarios Lector/Común solo ven Aprobados
             query = query.Where(d => d.Estado == EstadoDocumento.Aprobado);
         }
 
-        return await query.ToListAsync();
+        // 4. Proyección Optimizada (Evita traer todas las revisiones)
+        var result = await query.Select(d => new DocumentoDto
+        {
+            Id = d.Id,
+            Codigo = d.Codigo,
+            Titulo = d.Titulo,
+            Tipo = d.Tipo,
+            Area = d.Area,
+            Estado = d.Estado,
+            VersionActual = d.VersionActual,
+            FechaActualizacion = d.FechaActualizacion ?? d.FechaCreacion,
+            // Obtener solo el nombre del archivo de la versión actual
+            NombreArchivoActual = d.Revisiones
+                .Where(r => r.EsVersionActual)
+                .Select(r => r.NombreArchivo)
+                .FirstOrDefault()
+        }).ToListAsync();
+
+        return Ok(result);
     }
 
     [Authorize(Roles = "Administrador,Escritor,Responsable")]
@@ -91,9 +164,12 @@ public class DocumentosController : ControllerBase
         [FromForm] TipoDocumento tipo, 
         [FromForm] AreaProceso area, 
         [FromForm] int? carpetaId,
+        [FromForm] int? numeroRevision, // Nuevo parámetro opcional
         IFormFile archivo)
     {
         if (archivo == null || archivo.Length == 0) return BadRequest("El archivo es obligatorio.");
+
+        int revisionInicial = numeroRevision ?? 1;
 
         var documento = new Documento
         {
@@ -101,9 +177,9 @@ public class DocumentosController : ControllerBase
             Codigo = codigo,
             Tipo = tipo,
             Area = area,
-            CarpetaDocumentoId = carpetaId, // Asignar carpeta
+            CarpetaDocumentoId = carpetaId,
             Estado = EstadoDocumento.Borrador,
-            VersionActual = 1
+            VersionActual = revisionInicial
         };
 
         _context.Documentos.Add(documento);
@@ -114,14 +190,14 @@ public class DocumentosController : ControllerBase
         var revision = new VersionDocumento
         {
             DocumentoId = documento.Id,
-            NumeroVersion = 1,
-            DescripcionCambio = "Creación inicial",
+            NumeroVersion = revisionInicial,
+            DescripcionCambio = revisionInicial == 1 ? "Creación inicial" : $"Carga inicial (Migración Rev {revisionInicial})",
             NombreArchivo = archivo.FileName,
             RutaArchivo = rutaArchivo,
             TipoContenido = archivo.ContentType,
             EsVersionActual = true,
             CreadoPor = User.Identity?.Name ?? "Sistema",
-            EstadoRevision = "Pendiente" // Se crea como pendiente para que el auditor lo vea
+            EstadoRevision = "Pendiente"
         };
 
         _context.VersionesDocumento.Add(revision);
@@ -362,66 +438,14 @@ public class DocumentosController : ControllerBase
     {
         try
         {
-            var documento = await _context.Documentos.Include(d => d.Revisiones).FirstOrDefaultAsync(d => d.Id == id);
+            var documento = await _context.Documentos.FirstOrDefaultAsync(d => d.Id == id);
             if (documento == null) return NotFound();
 
-            var versionVigente = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
-            if (versionVigente == null) return NotFound("No se encontró una versión activa para analizar.");
-
-            // 1. Obtener el archivo físico
-            var datosArchivo = await _fileService.GetFileAsync(versionVigente.RutaArchivo);
-            
-            // 2. Copiar a memoria
-            byte[] contenido;
-            using (var ms = new MemoryStream())
-            {
-                await datosArchivo.Content.CopyToAsync(ms);
-                contenido = ms.ToArray();
-            }
-            
-            // 3. Convertir a PDF si es necesario (igual que en DescargarDocumento)
-            string extension = Path.GetExtension(versionVigente.NombreArchivo).ToLower();
-            
-            if (extension != ".pdf")
-            {
-                Console.WriteLine($"[ChatDocumento] Convirtiendo {extension} a PDF...");
-                try
-                {
-                    contenido = _converterService.ConvertToPdf(contenido, extension);
-                    Console.WriteLine($"[ChatDocumento] Conversión exitosa. Nuevo tamaño: {contenido.Length} bytes");
-                }
-                catch (Exception convEx)
-                {
-                    Console.WriteLine($"[ChatDocumento] Error en conversión: {convEx.Message}");
-                    return BadRequest($"No se pudo convertir el documento {extension} a PDF: {convEx.Message}");
-                }
-            }
-            
-            // 4. Extraer texto plano con iText7
-            var sb = new StringBuilder();
-            using (var ms = new MemoryStream(contenido))
-            {
-                using (var pdfReader = new PdfReader(ms))
-                using (var pdfDoc = new PdfDocument(pdfReader))
-                {
-                    var pages = pdfDoc.GetNumberOfPages();
-                    for (int i = 1; i <= pages; i++)
-                    {
-                        var page = pdfDoc.GetPage(i);
-                        var text = PdfTextExtractor.GetTextFromPage(page);
-                        sb.AppendLine(text);
-                    }
-                }
-            }
-
-            string contenidoTexto = sb.ToString();
-
-            if (string.IsNullOrWhiteSpace(contenidoTexto))
-                return BadRequest("El documento no contiene texto legible (quizás es una imagen escaneada).");
-
-            // 3. Consultar a la IA
+            // 1. Consultar a la IA usando RAG (Knowledge Base)
             var usuarioAi = User.Identity?.Name ?? "anonimo";
-            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, contenidoTexto, usuarioAi);
+            
+            // Ya no procesamos el PDF aquí, la IA lo tiene en su KB (S3 Sync)
+            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, null, usuarioAi);
 
             await _auditoria.RegistrarAccionAsync("CONSULTA_IA", "Documento", id, $"Pregunta: {request.Pregunta}");
 
@@ -430,16 +454,7 @@ public class DocumentosController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine($"[DocumentosController] Error en Chat IA: {ex}");
-            Console.WriteLine($"[DocumentosController] Stack Trace: {ex.StackTrace}");
-            
-            // Mensaje más específico según el tipo de error
-            string mensajeUsuario = ex.Message.Contains("archivo") || ex.Message.Contains("file") 
-                ? "El archivo del documento no está disponible en el servidor. Por favor, contacta al administrador."
-                : ex.Message.Contains("API") || ex.Message.Contains("Google")
-                ? "Error al comunicarse con el servicio de IA. Verifica la configuración de la API Key."
-                : $"Error al procesar consulta con IA: {ex.Message}";
-                
-            return StatusCode(500, mensajeUsuario);
+            return StatusCode(500, $"Error al procesar consulta con IA: {ex.Message}");
         }
     }
 

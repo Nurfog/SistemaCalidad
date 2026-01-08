@@ -8,11 +8,9 @@ export const SignalRProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5156';
         const newConnection = new signalR.HubConnectionBuilder()
-            .withUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:5156'}/hub/notificaciones`, {
-                skipNegotiation: true,
-                transport: signalR.HttpTransportType.WebSockets
-            })
+            .withUrl(`${apiUrl}/hub/notificaciones`)
             .withAutomaticReconnect()
             .build();
 

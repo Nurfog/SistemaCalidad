@@ -31,13 +31,46 @@ public class CarpetasDocumentosController : ControllerBase
             .ToListAsync();
     }
     
-    // GET: api/CarpetasDocumentos/Arbol (Opcional: Traer todo el árbol)
+    // GET: api/CarpetasDocumentos/Arbol (Traer todo el árbol)
     [HttpGet("Arbol")]
     public async Task<ActionResult<IEnumerable<object>>> GetArbolCarpetas() 
     {
-       // Nota: Implementar recursión cuidadosa si hay muchas carpetas. 
-       // Por ahora, el cliente navegará nivel por nivel (Lazy Loading).
-       return BadRequest("Use navegación por niveles (parentId)");
+        try 
+        {
+            var todasLasCarpetas = await _context.CarpetasDocumentos
+                .OrderBy(c => c.Nombre)
+                .AsNoTracking() // Mejora rendimiento para lecturas
+                .ToListAsync();
+
+            // Construir árbol desde las raíces
+            var raices = todasLasCarpetas.Where(c => c.ParentId == null).ToList();
+            
+            var tree = raices.Select(c => MapToTree(c, todasLasCarpetas, 0)).ToList();
+            
+            return Ok(tree);
+        }
+        catch (Exception ex)
+        {
+            // Logging preventivo para diagnósticos futuros
+            System.Console.WriteLine($"Error crítico en Arbol: {ex.Message}");
+            return StatusCode(500, "Error interno al procesar la jerarquía");
+        }
+    }
+
+    private object MapToTree(CarpetaDocumento c, List<CarpetaDocumento> todas, int depth)
+    {
+        // Protección contra recursión infinita (StackOverflow)
+        if (depth > 20) return new { c.Id, c.Nombre, c.Color, SubCarpetas = new List<object>(), Error = "Exceso de profundidad detectado" };
+
+        return new
+        {
+            c.Id,
+            c.Nombre,
+            c.Color,
+            SubCarpetas = todas.Where(x => x.ParentId == c.Id)
+                               .Select(x => MapToTree(x, todas, depth + 1))
+                               .ToList()
+        };
     }
 
 
@@ -79,15 +112,36 @@ public class CarpetasDocumentosController : ControllerBase
         existing.Color = carpeta.Color;
         
         // Logica para mover carpeta (cambiar ParentId)
-        // Evitar ciclos (que una carpeta sea su propio hijo)
+        // Evitar ciclos (que una carpeta sea su propio hijo o moverla dentro de su descendencia)
         if (carpeta.ParentId != existing.ParentId)
         {
             if (carpeta.ParentId == id) return BadRequest("Una carpeta no puede ser su propio padre.");
+            
+            if (carpeta.ParentId.HasValue)
+            {
+                // Verificar si el nuevo padre es un descendiente de la carpeta actual
+                if (await EsDescendiente(id, carpeta.ParentId.Value))
+                {
+                    return BadRequest("No se puede mover una carpeta dentro de una de sus propias subcarpetas.");
+                }
+            }
+            
             existing.ParentId = carpeta.ParentId;
         }
 
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    private async Task<bool> EsDescendiente(int rootId, int targetId)
+    {
+        var actual = await _context.CarpetasDocumentos.FindAsync(targetId);
+        while (actual != null && actual.ParentId.HasValue)
+        {
+            if (actual.ParentId == rootId) return true;
+            actual = await _context.CarpetasDocumentos.FindAsync(actual.ParentId);
+        }
+        return false;
     }
 
     // DELETE: api/CarpetasDocumentos/5
