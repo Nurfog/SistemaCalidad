@@ -68,17 +68,24 @@ public class DocumentosController : ControllerBase
                 }
             }
 
-            // 2. Limpiar Base de Datos
+            // 2. Limpiar Base de Datos - Documentos
             _context.VersionesDocumento.RemoveRange(versiones);
             var documentos = await _context.Documentos.ToListAsync();
             _context.Documentos.RemoveRange(documentos);
 
             await _context.SaveChangesAsync();
 
-            // 3. Registrar en Auditoría
-            await _auditoria.RegistrarAccionAsync("PURGA_TOTAL", "Sistema", 0, $"Se eliminaron {documentos.Count} documentos y {archivosBorrados} archivos físicos.");
+            // 3. Limpiar Carpetas (después de los documentos para evitar FK constraint)
+            var carpetas = await _context.CarpetasDocumentos.ToListAsync();
+            _context.CarpetasDocumentos.RemoveRange(carpetas);
+            
+            await _context.SaveChangesAsync();
 
-            // 4. Sincronizar IA (para que limpie su KB)
+            // 4. Registrar en Auditoría
+            await _auditoria.RegistrarAccionAsync("PURGA_TOTAL", "Sistema", 0, 
+                $"Se eliminaron {documentos.Count} documentos, {archivosBorrados} archivos físicos y {carpetas.Count} carpetas.");
+
+            // 5. Sincronizar IA (para que limpie su KB)
             try
             {
                 _ = _iaService.SincronizarS3Async();
@@ -89,7 +96,8 @@ public class DocumentosController : ControllerBase
             { 
                 mensaje = "Purga de sistema completada con éxito.", 
                 documentosEliminados = documentos.Count,
-                archivosFisicosEliminados = archivosBorrados
+                archivosFisicosEliminados = archivosBorrados,
+                carpetasEliminadas = carpetas.Count
             });
         }
         catch (Exception ex)

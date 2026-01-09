@@ -25,6 +25,7 @@ public class CarpetaDocumento
     [JsonIgnore] // Evitar ciclos infinitos en serialización
     public CarpetaDocumento? Parent { get; set; }
 
+    [JsonPropertyName("subCarpetas")] // Frontend espera camelCase con 'C'
     public ICollection<CarpetaDocumento> Subcarpetas { get; set; } = new List<CarpetaDocumento>();
 
     // Relación con Documentos (One-to-Many)

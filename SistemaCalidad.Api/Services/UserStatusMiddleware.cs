@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SistemaCalidad.Api.Data;
 
 namespace SistemaCalidad.Api.Services;
@@ -8,10 +9,12 @@ namespace SistemaCalidad.Api.Services;
 public class UserStatusMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly IMemoryCache _cache;
 
-    public UserStatusMiddleware(RequestDelegate next)
+    public UserStatusMiddleware(RequestDelegate next, IMemoryCache cache)
     {
         _next = next;
+        _cache = cache;
     }
 
     public async Task InvokeAsync(HttpContext context, ApplicationDbContext dbContext)
@@ -30,44 +33,56 @@ public class UserStatusMiddleware
 
             if (!string.IsNullOrEmpty(username))
             {
-                try
+                // CACHE-ASIDE PATTERN
+                string cacheKey = $"user_status_{username}";
+                
+                // Si ya validamos hace poco (5 min), pasamos (asumimos activo)
+                if (!_cache.TryGetValue(cacheKey, out bool estaActivo))
                 {
-                    // 3. Consulta ADO.NET Directa (Bylass EF Mapping issues)
-                    // Usamos sige_sam_v3 explícitamente.
-                    var conn = dbContext.Database.GetDbConnection();
-                    if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
-
-                    using (var cmd = conn.CreateCommand())
+                    // Si NO está en caché, consultamos a la BD
+                    try
                     {
-                        cmd.CommandText = "SELECT Activo FROM sige_sam_v3.usuario WHERE idUsuario = @u LIMIT 1";
-                        var p1 = cmd.CreateParameter();
-                        p1.ParameterName = "@u";
-                        p1.Value = username;
-                        cmd.Parameters.Add(p1);
+                        var conn = dbContext.Database.GetDbConnection();
+                        if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
 
-                        var result = await cmd.ExecuteScalarAsync();
-
-                        // Si encontramos el usuario
-                        if (result != null && result != DBNull.Value)
+                        using (var cmd = conn.CreateCommand())
                         {
-                            int activo = Convert.ToInt32(result);
-                            if (activo != 1)
+                            // Usamos sige_sam_v3 explícitamente.
+                            cmd.CommandText = "SELECT Activo FROM sige_sam_v3.usuario WHERE idUsuario = @u LIMIT 1";
+                            var p1 = cmd.CreateParameter();
+                            p1.ParameterName = "@u";
+                            p1.Value = username;
+                            cmd.Parameters.Add(p1);
+
+                            var result = await cmd.ExecuteScalarAsync();
+
+                            estaActivo = true; // Por defecto activo si no se encuentra (fail open seguro local)
+                            if (result != null && result != DBNull.Value)
                             {
-                                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                                await context.Response.WriteAsJsonAsync(new { mensaje = "Tu cuenta ha sido desactivada en el sistema central." });
-                                return; // Bloquear petición
+                                int val = Convert.ToInt32(result);
+                                if (val != 1) estaActivo = false;
                             }
                         }
-                        // Si no se encuentra el usuario, por seguridad podríamos bloquear o dejar pasar.
-                        // Asumiremos que si tiene Token válido pero no está en la tabla externa (quizás es admin local?), lo dejamos pasar por ahora.
+
+                        // Guardar en caché por 5 minutos
+                        var cacheEntryOptions = new MemoryCacheEntryOptions()
+                            .SetAbsoluteExpiration(TimeSpan.FromMinutes(5));
+
+                        _cache.Set(cacheKey, estaActivo, cacheEntryOptions);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Fallo silencioso (Fail Open)
+                        Console.WriteLine($"[UserStatusMiddleware] ERROR CRÍTICO DB: {ex.Message}");
+                        estaActivo = true; // Dejar pasar en caso de error técnico
                     }
                 }
-                catch (Exception ex)
+
+                if (!estaActivo)
                 {
-                    // Fallo silencioso en producción para no tumbar la API (Fail Open)
-                    // Pero logueamos el error en consola severa
-                    Console.WriteLine($"[UserStatusMiddleware] ERROR CRÍTICO al validar usuario {username}: {ex.Message}");
-                    // Opcional: Bloquear si se prefiere seguridad estricta
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsJsonAsync(new { mensaje = "Tu cuenta ha sido desactivada en el sistema central." });
+                    return; // Bloquear petición
                 }
             }
         }

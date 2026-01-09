@@ -97,6 +97,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+
+        // Configuración crítica para SignalR en WebSockets (el navegador no envía headers)
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // Si la petición tiene token y es para el Hub
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/api/hub/notificaciones")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        }; 
     });
 
 builder.Services.AddAuthorization();
@@ -107,13 +125,11 @@ Console.WriteLine($"Iniciando en modo: {(builder.Environment.IsDevelopment() ? "
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 21))));
 
-// Health Checks
-builder.Services.AddHealthChecks()
-    .AddMySql(connectionString!, name: "Base de Datos");
-// Nota: S3 Health check se puede agregar con paquetes adicionales, 
-// por ahora usaremos una validación custom en el controlador de status.
+// Health Checks (Deshabilitado temporalmente para diagnóstico)
+// builder.Services.AddHealthChecks()
+//    .AddMySql(connectionString!, name: "Base de Datos");
 
-// File Storage Service
+// ... (Resto de servicios)
 builder.Services.AddHttpContextAccessor();
 
 var useS3 = builder.Configuration.GetValue<bool>("FileStorage:UseS3");
@@ -172,7 +188,7 @@ builder.Services.AddHttpClient<IIAService, IAService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(10); // Aumentar hasta 10 minutos por posibles retrasos en hardware local
 });
-builder.Services.AddHostedService<IASyncBackgroundService>();
+// builder.Services.AddHostedService<IASyncBackgroundService>(); // Deshabilitado temporalmente
 
 // CORS
 builder.Services.AddCors(options =>
@@ -188,9 +204,16 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSignalR();
 
+// Add services to the container.
+builder.Services.AddMemoryCache(); // Caché para UserStatusMiddleware
+// builder.Services.AddControllers(); // YA REGISTRADO ARRIBA
+
+// ... (resto de configuraciones)
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseDeveloperExceptionPage(); // HABILITADO TEMPORALMENTE para diagnosticar 503
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -200,7 +223,7 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors("AllowAll");
 app.UseAuthentication();
-app.UseMiddleware<UserStatusMiddleware>(); // Validación de estado en tiempo real
+// app.UseMiddleware<UserStatusMiddleware>(); // Validacion temporalmente deshabilitada
 app.UseAuthorization();
 
 // Servir archivos estáticos (Frontend React)
@@ -217,4 +240,13 @@ app.MapFallbackToFile("index.html");
 
 // La base de datos se maneja manualmente via scripts SQL
 
-app.Run();
+try 
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[FATAL ERROR] Application crashed: {ex}");
+    File.WriteAllText("StartupFatalError.txt", ex.ToString());
+    throw;
+}

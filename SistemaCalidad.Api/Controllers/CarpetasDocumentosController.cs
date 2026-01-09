@@ -60,14 +60,14 @@ public class CarpetasDocumentosController : ControllerBase
     private object MapToTree(CarpetaDocumento c, List<CarpetaDocumento> todas, int depth)
     {
         // Protección contra recursión infinita (StackOverflow)
-        if (depth > 20) return new { c.Id, c.Nombre, c.Color, SubCarpetas = new List<object>(), Error = "Exceso de profundidad detectado" };
+        if (depth > 20) return new { c.Id, c.Nombre, c.Color, subCarpetas = new List<object>(), Error = "Exceso de profundidad detectado" };
 
         return new
         {
             c.Id,
             c.Nombre,
             c.Color,
-            SubCarpetas = todas.Where(x => x.ParentId == c.Id)
+            subCarpetas = todas.Where(x => x.ParentId == c.Id)
                                .Select(x => MapToTree(x, todas, depth + 1))
                                .ToList()
         };

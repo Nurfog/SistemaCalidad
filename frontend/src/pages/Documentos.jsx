@@ -19,7 +19,8 @@ import {
     Trash2,
     Move,
     LayoutGrid,
-    Search as SearchIcon
+    Search as SearchIcon,
+    CloudUpload // Nuevo icono corregido
 } from 'lucide-react';
 
 import DocumentModal from '../components/DocumentModal';
@@ -28,6 +29,7 @@ import RevisionModal from '../components/RevisionModal';
 import MoveModal from '../components/MoveModal';
 import FolderTree from '../components/FolderTree';
 import SecureDocViewer from '../components/SecureDocViewer';
+import BulkUploadDialog from '../components/BulkUpload/BulkUploadDialog'; // Nuevo componente
 import '../styles/Documentos.css';
 
 const Documentos = () => {
@@ -42,6 +44,7 @@ const Documentos = () => {
     const [isCarpetaModalOpen, setIsCarpetaModalOpen] = useState(false);
     const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false); // Estado para carga masiva
 
     const [selectedDocForRevision, setSelectedDocForRevision] = useState(null);
     const [selectedDocForMove, setSelectedDocForMove] = useState(null);
@@ -158,6 +161,9 @@ const Documentos = () => {
                             <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
                                 <Plus size={18} /> Subir Archivo
                             </button>
+                            <button className="btn-secondary" style={{ backgroundColor: '#4f46e5', color: 'white' }} onClick={() => setIsBulkUploadOpen(true)}>
+                                <CloudUpload size={18} /> Carga Masiva
+                            </button>
                         </>
                     )}
                     <button className="btn-primary" onClick={() => navigate('/redactar')}>
@@ -265,6 +271,17 @@ const Documentos = () => {
                     }
                 }}
             />
+            {isBulkUploadOpen && (
+                <BulkUploadDialog
+                    open={isBulkUploadOpen}
+                    onClose={() => setIsBulkUploadOpen(false)}
+                    currentFolderId={carpetaActual?.id || null}
+                    onUploadComplete={() => {
+                        setRefreshTreeKey(prev => prev + 1); // Refresh tree for new folders
+                        fetchContenido(); // Refresh files
+                    }}
+                />
+            )}
             {selectedDocForRevision && <RevisionModal isOpen={isRevisionModalOpen} onClose={() => setIsRevisionModalOpen(false)} docId={selectedDocForRevision.id} docTitulo={selectedDocForRevision.titulo} onSave={fetchContenido} />}
             {selectedDocForMove && <MoveModal isOpen={isMoveModalOpen} onClose={() => setIsMoveModalOpen(false)} docId={selectedDocForMove.id} docTitulo={selectedDocForMove.titulo} onSave={fetchContenido} />}
             {viewerOpen && selectedDocDetails && <SecureDocViewer fileUrl={selectedDocDetails.url} fileName={selectedDocDetails.name} docId={selectedDocDetails.id} onClose={() => setViewerOpen(false)} user={user} />}
