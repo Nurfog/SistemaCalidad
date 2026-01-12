@@ -4,7 +4,6 @@ import { X, ChevronLeft, ChevronRight, ShieldAlert, Ban } from 'lucide-react';
 import '../styles/SecureDocViewer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
-import AIChatWidget from './AIChatWidget';
 
 // Configurar Worker de PDF.js para Vite
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -133,10 +132,6 @@ const SecureDocViewer = ({ fileUrl, fileName, onClose, user, docId }) => {
                 </div>
             </div>
 
-            {/* Widget de Chat con IA */}
-            {docId && (
-                <AIChatWidget docId={docId} docTitle={fileName} />
-            )}
         </div>
     );
 };

@@ -44,6 +44,28 @@ public class IAController : ControllerBase
             return StatusCode(500, $"Error en el chat de IA: {ex.Message}");
         }
     }
+
+    [HttpGet("buscar-semantica")]
+    public async Task<IActionResult> BuscarSemantica([FromQuery] string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return BadRequest("La consulta es obligatoria.");
+        
+        try
+        {
+            var result = await _iaService.BuscarDocumentosRelacionados(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error en la búsqueda de Samito: {ex.Message}");
+        }
+    }
+
+    [HttpGet("config")]
+    public IActionResult GetConfig()
+    {
+        return Ok(_iaService.GetSamitoConfig());
+    }
 }
 
 public class ChatGlobalRequest

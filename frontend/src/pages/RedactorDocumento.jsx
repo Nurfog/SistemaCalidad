@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import { Save, FileText, ArrowLeft, Loader2, Search } from 'lucide-react';
+import { Save, FileText, ArrowLeft, Loader2, Search, Plus } from 'lucide-react';
 import api from '../api/client';
 import { useNavigate, useParams } from 'react-router-dom';
+import { parseEditorCommands, generateTableHtml } from '../utils/EditorUtils';
 import '../styles/RedactorDocumento.css';
 
 const RedactorDocumento = () => {
@@ -11,6 +12,7 @@ const RedactorDocumento = () => {
     const { baseId } = useParams();
     const [loading, setLoading] = useState(false);
     const [buscandoBase, setBuscandoBase] = useState(false);
+    const [extrayendoConIA, setExtrayendoConIA] = useState(false);
     const [documentos, setDocumentos] = useState([]);
 
     const [formData, setFormData] = useState({
@@ -20,8 +22,20 @@ const RedactorDocumento = () => {
         tipo: 1, // Procedimiento por defecto
         area: 2, // Operacional por defecto
         contenidoHtml: '',
-        descripcionCambio: ''
+        descripcionCambio: '',
+        encabezadoAdicional: '',
+        piePaginaPersonalizado: ''
     });
+
+    const sgcBlocks = [
+        { name: 'Objetivo', content: '<h2>1. OBJETIVO</h2><p>Establecer las directrices para...</p>' },
+        { name: 'Alcance', content: '<h2>2. ALCANCE</h2><p>Este procedimiento aplica a todos los procesos de...</p>' },
+        { name: 'Responsabilidades', content: '<h2>3. RESPONSABILIDADES</h2><p><strong>Gerencia:</strong> Supervisar...<br><strong>Encargado:</strong> Ejecutar...</p>' },
+        { name: 'Definiciones', content: '<h2>4. DEFINICIONES</h2><ul><li><strong>SGC:</strong> Sistema de Gestión de Calidad.</li></ul>' },
+        { name: 'Desarrollo', content: '<h2>5. DESARROLLO DEL PROCESO</h2><p>El proceso inicia cuando...</p>' },
+        { name: 'Documentos Relacionados', content: '<h2>6. DOCUMENTOS RELACIONADOS</h2><ul><li>Manual de Calidad</li><li>Listado Maestro</li></ul>' },
+        { name: 'Anexos', content: '<h2>7. ANEXOS</h2><p>No aplica / Ver Listado de Anexos</p>' }
+    ];
 
     useEffect(() => {
         fetchDocumentos();
@@ -49,17 +63,54 @@ const RedactorDocumento = () => {
         }
     };
 
-    const handleSelectBase = (doc) => {
-        setFormData({
-            ...formData,
-            id: doc.id,
-            titulo: doc.titulo,
-            codigo: doc.codigo,
-            tipo: doc.tipo,
-            area: doc.area,
-            descripcionCambio: `Actualización de versión`
-        });
+    const handleSelectBase = async (doc) => {
         setBuscandoBase(false);
+        setExtrayendoConIA(true);
+
+        try {
+            // Intentamos extraer el contenido con IA
+            const res = await api.get(`/Documentos/${doc.id}/extraer-contenido`);
+            const { contenidoHtml } = res.data;
+
+            setFormData({
+                ...formData,
+                id: doc.id,
+                titulo: doc.titulo,
+                codigo: doc.codigo,
+                tipo: doc.tipo,
+                area: doc.area,
+                descripcionCambio: `Actualización basada en ${doc.codigo}`,
+                encabezadoAdicional: doc.encabezadoAdicional || '',
+                piePaginaPersonalizado: doc.piePaginaPersonalizado || '',
+                contenidoHtml: contenidoHtml || '<p></p>'
+            });
+        } catch (error) {
+            console.error('Error al extraer contenido con IA:', error);
+            // Si falla la IA, al menos cargamos los metadatos
+            setFormData({
+                ...formData,
+                id: doc.id,
+                titulo: doc.titulo,
+                codigo: doc.codigo,
+                tipo: doc.tipo,
+                area: doc.area,
+            });
+            alert('No pudimos extraer el contenido exacto con IA, pero hemos cargado los metadatos del documento.');
+        } finally {
+            setExtrayendoConIA(false);
+        }
+    };
+
+    const handleInsertBlock = (block) => {
+        setFormData(prev => ({
+            ...prev,
+            contenidoHtml: prev.contenidoHtml + block.content
+        }));
+    };
+
+    const handleEditorChange = (content) => {
+        const { content: parsedContent, hasChanged } = parseEditorCommands(content);
+        setFormData(prev => ({ ...prev, contenidoHtml: parsedContent }));
     };
 
     const handleSubmit = async (e) => {
@@ -173,23 +224,78 @@ const RedactorDocumento = () => {
                     <div className="form-group">
                         <label>Motivo del Cambio</label>
                         <textarea
-                            rows="3"
+                            rows="2"
                             placeholder="Explica brevemente por qué se crea o actualiza..."
                             value={formData.descripcionCambio}
                             onChange={(e) => setFormData({ ...formData, descripcionCambio: e.target.value })}
                         ></textarea>
                     </div>
+                    <div className="form-group divider">
+                        <h3>Personalización Visual</h3>
+                    </div>
+                    <div className="form-group">
+                        <label>Texto de Encabezado (Opcional)</label>
+                        <input
+                            type="text"
+                            placeholder="Ej: Documento de Uso Exclusivo..."
+                            value={formData.encabezadoAdicional}
+                            onChange={(e) => setFormData({ ...formData, encabezadoAdicional: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Texto de Pie de Página (Opcional)</label>
+                        <input
+                            type="text"
+                            placeholder="Ej: Impreso el {fecha} por {usuario}..."
+                            value={formData.piePaginaPersonalizado}
+                            onChange={(e) => setFormData({ ...formData, piePaginaPersonalizado: e.target.value })}
+                        />
+                    </div>
                 </aside>
 
                 {/* Área de Redacción */}
                 <main className="editor-area card">
-                    <ReactQuill
-                        theme="snow"
-                        value={formData.contenidoHtml}
-                        onChange={(content) => setFormData({ ...formData, contenidoHtml: content })}
-                        modules={modules}
-                        placeholder="Comienza a redactar el contenido de tu documento aquí..."
-                    />
+                    {extrayendoConIA && (
+                        <div className="ia-extraction-loader">
+                            <Loader2 size={32} className="animate-spin text-primary" />
+                            <p>La IA está analizando el documento base y extrayendo el contenido...</p>
+                        </div>
+                    )}
+                    <div className="editor-workspace">
+                        <div className="quill-wrapper">
+                            <ReactQuill
+                                theme="snow"
+                                value={formData.contenidoHtml}
+                                onChange={handleEditorChange}
+                                modules={modules}
+                                placeholder="Comienza a redactar... Tip: Escribe tabla(3,2) para insertar una tabla rápidamente."
+                            />
+                        </div>
+
+                        {/* Sidebar de Bloques Estándar */}
+                        <aside className="blocks-sidebar">
+                            <h4>Bloques SGC</h4>
+                            <p className="text-xs text-secondary mb-3">Haz clic para insertar:</p>
+                            <div className="blocks-list">
+                                {sgcBlocks.map((block, idx) => (
+                                    <button
+                                        key={idx}
+                                        className="block-btn"
+                                        onClick={() => handleInsertBlock(block)}
+                                    >
+                                        <Plus size={14} />
+                                        <span>{block.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="helper-box mt-6">
+                                <h5>Comandos Rápidos</h5>
+                                <code>tabla(filas, cols)</code>
+                                <code>h2(texto)</code>
+                            </div>
+                        </aside>
+                    </div>
                 </main>
             </div>
 

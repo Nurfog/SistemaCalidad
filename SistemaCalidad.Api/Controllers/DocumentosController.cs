@@ -68,22 +68,33 @@ public class DocumentosController : ControllerBase
                 }
             }
 
-            // 2. Limpiar Base de Datos - Documentos
+            // 2. Limpiar Base de Datos - ORDEN DE DEPENDECIA (Constraints)
+
+            // Mejora Continua
+            _context.AccionesCalidad.RemoveRange(await _context.AccionesCalidad.ToListAsync());
+            _context.NoConformidades.RemoveRange(await _context.NoConformidades.ToListAsync());
+
+            // Documentación y Versiones
+            var documentosCount = await _context.Documentos.CountAsync();
+            var carpetasCount = await _context.CarpetasDocumentos.CountAsync();
+
             _context.VersionesDocumento.RemoveRange(versiones);
-            var documentos = await _context.Documentos.ToListAsync();
-            _context.Documentos.RemoveRange(documentos);
+            _context.Documentos.RemoveRange(await _context.Documentos.ToListAsync());
+            _context.CarpetasDocumentos.RemoveRange(await _context.CarpetasDocumentos.ToListAsync());
 
-            await _context.SaveChangesAsync();
-
-            // 3. Limpiar Carpetas (después de los documentos para evitar FK constraint)
-            var carpetas = await _context.CarpetasDocumentos.ToListAsync();
-            _context.CarpetasDocumentos.RemoveRange(carpetas);
+            // Otros Módulos
+            _context.RegistrosCalidad.RemoveRange(await _context.RegistrosCalidad.ToListAsync());
+            _context.DocumentosExternos.RemoveRange(await _context.DocumentosExternos.ToListAsync());
+            _context.Anexos.RemoveRange(await _context.Anexos.ToListAsync());
             
+            // Auditoría (Opcional, pero solicitado "Todas las tablas")
+            _context.AuditoriaAccesos.RemoveRange(await _context.AuditoriaAccesos.ToListAsync());
+
             await _context.SaveChangesAsync();
 
-            // 4. Registrar en Auditoría
-            await _auditoria.RegistrarAccionAsync("PURGA_TOTAL", "Sistema", 0, 
-                $"Se eliminaron {documentos.Count} documentos, {archivosBorrados} archivos físicos y {carpetas.Count} carpetas.");
+            // 4. Registrar en Auditoría (Nueva entrada después de limpiar)
+            await _auditoria.RegistrarAccionAsync("PURGA_SISTEMA_COMPLETA", "Sistema", 0, 
+                $"Se realizó una limpieza general del sistema. Archivos físicos eliminados: {archivosBorrados}.");
 
             // 5. Sincronizar IA (para que limpie su KB)
             try
@@ -94,10 +105,10 @@ public class DocumentosController : ControllerBase
 
             return Ok(new 
             { 
-                mensaje = "Purga de sistema completada con éxito.", 
-                documentosEliminados = documentos.Count,
+                mensaje = "Purga completa del sistema realizada con éxito (excepto usuarios).", 
+                documentosEliminados = documentosCount,
                 archivosFisicosEliminados = archivosBorrados,
-                carpetasEliminadas = carpetas.Count
+                carpetasEliminadas = carpetasCount
             });
         }
         catch (Exception ex)
@@ -120,7 +131,15 @@ public class DocumentosController : ControllerBase
         // 0. Filtro por Carpeta
         if (string.IsNullOrWhiteSpace(buscar))
         {
-            query = query.Where(d => d.CarpetaDocumentoId == carpetaId);
+            if (carpetaId.HasValue)
+            {
+                query = query.Where(d => d.Carpetas.Any(c => c.Id == carpetaId.Value));
+            }
+            else
+            {
+                // Si es nulo y no hay búsqueda, traemos los de la raíz (sin carpeta)
+                query = query.Where(d => !d.Carpetas.Any());
+            }
         }
 
         // 1. Busqueda por texto
@@ -171,11 +190,17 @@ public class DocumentosController : ControllerBase
         [FromForm] string codigo, 
         [FromForm] TipoDocumento tipo, 
         [FromForm] AreaProceso area, 
-        [FromForm] int? carpetaId,
-        [FromForm] int? numeroRevision, // Nuevo parámetro opcional
+        [FromForm] int[]? carpetaIds, // Modificado a array
+        [FromForm] int? numeroRevision, 
         IFormFile archivo)
     {
-        if (archivo == null || archivo.Length == 0) return BadRequest("El archivo es obligatorio.");
+        Console.WriteLine($"[DocumentosController] POST /api/Documentos - Titulo: {titulo}, Codigo: {codigo}, Carpetas: {(carpetaIds != null ? string.Join(",", carpetaIds) : "null")}");
+        
+        if (archivo == null || archivo.Length == 0) 
+        {
+            Console.WriteLine("[DocumentosController] Error: Archivo nulo o vacío");
+            return BadRequest("El archivo es obligatorio.");
+        }
 
         int revisionInicial = numeroRevision ?? 1;
 
@@ -185,10 +210,22 @@ public class DocumentosController : ControllerBase
             Codigo = codigo,
             Tipo = tipo,
             Area = area,
-            CarpetaDocumentoId = carpetaId,
             Estado = EstadoDocumento.Borrador,
             VersionActual = revisionInicial
         };
+
+        // Vincular carpetas - Usamos un bucle para evitar error de traducción LINQ en colecciones primitivas
+        if (carpetaIds != null && carpetaIds.Length > 0)
+        {
+            foreach (var id in carpetaIds)
+            {
+                var carpeta = await _context.CarpetasDocumentos.FindAsync(id);
+                if (carpeta != null) 
+                {
+                    documento.Carpetas.Add(carpeta);
+                }
+            }
+        }
 
         _context.Documentos.Add(documento);
         await _context.SaveChangesAsync();
@@ -430,11 +467,19 @@ public class DocumentosController : ControllerBase
         // Validar que la carpeta exista si no es null (raíz)
         if (request.CarpetaId.HasValue)
         {
-            var existeCarpeta = await _context.CarpetasDocumentos.AnyAsync(c => c.Id == request.CarpetaId);
-            if (!existeCarpeta) return BadRequest("La carpeta destino no existe.");
+            var carpetaDestino = await _context.CarpetasDocumentos.FindAsync(request.CarpetaId);
+            if (carpetaDestino == null) return BadRequest("La carpeta destino no existe.");
+
+            // Limpiar relaciones anteriores (Mover en M:N a veces implica resetear o solo añadir)
+            // Para "Mover" convencional, reemplazamos todas por la nueva
+            documento.Carpetas.Clear();
+            documento.Carpetas.Add(carpetaDestino);
+        }
+        else
+        {
+            documento.Carpetas.Clear();
         }
 
-        documento.CarpetaDocumentoId = request.CarpetaId;
         await _context.SaveChangesAsync();
 
         return Ok(new { mensaje = "Documento movido exitosamente." });
@@ -493,22 +538,37 @@ public class DocumentosController : ControllerBase
                 documento.VersionActual++;
                 documento.FechaActualizacion = DateTime.UtcNow;
                 documento.Estado = EstadoDocumento.Borrador; // Vuelve a borrador para revisión
+                documento.EncabezadoAdicional = request.EncabezadoAdicional;
+                documento.PiePaginaPersonalizado = request.PiePaginaPersonalizado;
                 version = documento.VersionActual;
             }
             else
             {
-                // NUEVO DOCUMENTO
                 documento = new Documento
                 {
                     Titulo = request.Titulo,
                     Codigo = request.Codigo,
                     Tipo = request.Tipo,
                     Area = request.Area,
-                    CarpetaDocumentoId = request.CarpetaId,
                     Estado = EstadoDocumento.Borrador,
                     VersionActual = 1,
-                    FechaCreacion = DateTime.UtcNow
+                    FechaCreacion = DateTime.UtcNow,
+                    EncabezadoAdicional = request.EncabezadoAdicional,
+                    PiePaginaPersonalizado = request.PiePaginaPersonalizado
                 };
+
+                if (request.CarpetaIds != null && request.CarpetaIds.Length > 0)
+                {
+                    foreach (var id in request.CarpetaIds)
+                    {
+                        var carpeta = await _context.CarpetasDocumentos.FindAsync(id);
+                        if (carpeta != null)
+                        {
+                            documento.Carpetas.Add(carpeta);
+                        }
+                    }
+                }
+
                 _context.Documentos.Add(documento);
                 await _context.SaveChangesAsync(); // Guardar para obtener el ID
                 version = 1;
@@ -526,7 +586,9 @@ public class DocumentosController : ControllerBase
                 .Replace("{{CODIGO}}", documento.Codigo)
                 .Replace("{{VERSION}}", version.ToString())
                 .Replace("{{FECHA}}", DateTime.Now.ToString("dd/MM/yyyy"))
-                .Replace("{{CONTENIDO}}", request.ContenidoHtml);
+                .Replace("{{CONTENIDO}}", request.ContenidoHtml)
+                .Replace("{{ENCABEZADO_EXTRA}}", request.EncabezadoAdicional ?? "")
+                .Replace("{{PIE_PAGINA_EXTRA}}", request.PiePaginaPersonalizado ?? "");
 
             // 3. Generar PDF
             byte[] pdfBytes;
@@ -573,6 +635,60 @@ public class DocumentosController : ControllerBase
             return StatusCode(500, $"Error al procesar el documento: {ex.Message}");
         }
     }
+
+    [Authorize(Roles = "Administrador,Escritor,Responsable")]
+    [HttpPatch("{id}/renombrar")]
+    public async Task<IActionResult> RenombrarDocumento(int id, [FromBody] RenombrarRequest request)
+    {
+        var documento = await _context.Documentos.FindAsync(id);
+        if (documento == null) return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(request.Titulo))
+            documento.Titulo = request.Titulo;
+
+        if (!string.IsNullOrWhiteSpace(request.Codigo))
+            documento.Codigo = request.Codigo;
+
+        await _context.SaveChangesAsync();
+
+        // Disparar sincronización con IA para actualizar metadatos en la KB
+        _ = _iaService.SincronizarS3Async();
+
+        return Ok(new { mensaje = "Documento actualizado correctamente" });
+    }
+
+    [Authorize(Roles = "Administrador,Escritor,Responsable")]
+    [HttpGet("{id}/extraer-contenido")]
+    public async Task<IActionResult> ExtraerContenido(int id)
+    {
+        try
+        {
+            var documento = await _context.Documentos
+                .Include(d => d.Revisiones)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (documento == null) return NotFound("Documento no encontrado.");
+
+            var versionActual = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+            if (versionActual == null) return BadRequest("El documento no tiene una versión actual publicada.");
+
+            // Llamar al servicio de IA para extraer el HTML basado en el archivo de S3
+            // Usamos el nombre del archivo porque la IA ya está sincronizada con el bucket
+            var htmlExtraido = await _iaService.ExtraerContenidoHtml(versionActual.NombreArchivo);
+
+            return Ok(new { contenidoHtml = htmlExtraido });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error al extraer contenido con IA: {ex.Message}");
+        }
+    }
+}
+
+public class RenombrarRequest
+{
+    public string? Titulo { get; set; }
+    public string? Codigo { get; set; }
 }
 
 public class RedactarDocumentoRequest
@@ -582,9 +698,11 @@ public class RedactarDocumentoRequest
     public string Codigo { get; set; } = string.Empty;
     public TipoDocumento Tipo { get; set; }
     public AreaProceso Area { get; set; }
-    public int? CarpetaId { get; set; }
+    public int[]? CarpetaIds { get; set; }
     public string ContenidoHtml { get; set; } = string.Empty;
     public string? DescripcionCambio { get; set; }
+    public string? EncabezadoAdicional { get; set; }
+    public string? PiePaginaPersonalizado { get; set; }
 }
 
 public class ChatRequest

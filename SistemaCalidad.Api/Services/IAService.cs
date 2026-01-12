@@ -8,6 +8,21 @@ public interface IIAService
 {
     Task<string> GenerarRespuesta(string pregunta, string? contextoDocumento = null, string usuario = "sistema", string? sessionId = null);
     Task<string> SincronizarS3Async();
+    Task<string> ExtraerContenidoHtml(string nombreArchivo);
+    Task<SamitoSearchResponse> BuscarDocumentosRelacionados(string consulta);
+    SamitoConfig GetSamitoConfig();
+}
+
+public class SamitoConfig
+{
+    public string Nombre { get; set; } = string.Empty;
+    public string Dominio { get; set; } = string.Empty;
+}
+
+public class SamitoSearchResponse
+{
+    public string Resena { get; set; } = string.Empty;
+    public List<string> CodigosArchivos { get; set; } = new();
 }
 
 public class IAService : IIAService
@@ -15,6 +30,8 @@ public class IAService : IIAService
     private readonly HttpClient _httpClient;
     private readonly string _aiBaseUrl;
     private readonly IConfiguration _configuration;
+    private readonly string _samitoName;
+    private readonly string _samitoDomain;
 
     public IAService(IConfiguration configuration, HttpClient httpClient)
     {
@@ -23,6 +40,9 @@ public class IAService : IIAService
         _aiBaseUrl = Environment.GetEnvironmentVariable("AI_API_URL") 
                      ?? configuration["AI_API_URL"] 
                      ?? "http://localhost:8000";
+        
+        _samitoName = Environment.GetEnvironmentVariable("AI_SAMITO_NAME") ?? "Samito SGC";
+        _samitoDomain = Environment.GetEnvironmentVariable("AI_SAMITO_DOMAIN") ?? "el Sistema de Gestión de Calidad (NCh 2728)";
     }
 
     public async Task<string> SincronizarS3Async()
@@ -120,6 +140,121 @@ Pregunta del usuario: {pregunta}";
         }
     }
 
+    public async Task<string> ExtraerContenidoHtml(string nombreArchivo)
+    {
+        var serviceUser = Environment.GetEnvironmentVariable("AI_SERVICE_USER") ?? "sgc_sistema";
+        await AsegurarAutenticacion(serviceUser);
+
+        var prompt = $@"
+Actúa como un extractor de contenido profesional. 
+Tu tarea es leer el archivo llamado '{nombreArchivo}' desde la base de conocimientos y devolver su contenido principal en formato HTML limpio.
+
+REGLAS:
+1. Genera HTML compatible con el editor Quill (usa <h2>, <h3>, <p>, <ul>, <li> y <table>).
+2. NO incluyas el encabezado institucional (el que tiene el logo y el código), solo el cuerpo del documento.
+3. NO añadas comentarios adicionales ni introducciones, responde ÚNICAMENTE con el código HTML.
+4. Si el documento tiene tablas, reconstrúyelas con <table>, <tr>, <td> con bordes básicos.
+5. Si no encuentras el archivo exacto, intenta extraer la información más relevante basada en el nombre del documento.";
+
+        var requestBody = new
+        {
+            username = serviceUser,
+            prompt = prompt,
+            use_kb = true
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/chat", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Error al extraer contenido con IA: {error}");
+            }
+
+            var result = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[IAService] Extracción de contenido completada en {sw.Elapsed.TotalSeconds:F2}s");
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[IAService] Error extrayendo contenido: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<SamitoSearchResponse> BuscarDocumentosRelacionados(string consulta)
+    {
+        var serviceUser = Environment.GetEnvironmentVariable("AI_SERVICE_USER") ?? "sgc_sistema";
+        await AsegurarAutenticacion(serviceUser);
+
+        var prompt = $@"
+Actúa como '{_samitoName}', el asistente inteligente experto en {_samitoDomain} del Instituto Chileno Norteamericano.
+
+TU TAREA:
+Analiza la pregunta del usuario y busca en la base de conocimientos los documentos relacionados.
+
+REGLAS DE RESPUESTA:
+1. Identifícate: Comienza con 'Hola, soy {_samitoName}...'.
+2. Sé preciso: Indica en qué documentos, páginas o secciones específicas se encuentra la información (ej: 'En el Manual de Calidad, página 5, punto 4.1...').
+3. Resumen: Da una breve reseña de lo que encontraste de forma técnica pero comprensible.
+4. Formato Estricto: Al final de tu respuesta, añade SIEMPRE una línea con el tag [ARCHIVOS] seguido de los CÓDIGOS de los documentos encontrados (ej: P-CAL-01, M-SGC-02) separados por comas. Si no encuentras nada, pon [ARCHIVOS] NINGUNO.
+
+CONSULTA DEL USUARIO: {consulta}";
+
+        var requestBody = new
+        {
+            username = serviceUser,
+            prompt = prompt,
+            use_kb = true
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var response = await _httpClient.PostAsync($"{_aiBaseUrl.TrimEnd('/')}/chat", content);
+            if (!response.IsSuccessStatusCode)
+                throw new Exception("Error en la API de Samito.");
+
+            var fullText = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[Samito] Búsqueda semántica completada en {sw.Elapsed.TotalSeconds:F2}s");
+            
+            // Procesar la respuesta de Samito
+            var samitoResult = new SamitoSearchResponse();
+            
+            if (fullText.Contains("[ARCHIVOS]"))
+            {
+                var parts = fullText.Split("[ARCHIVOS]", StringSplitOptions.TrimEntries);
+                samitoResult.Resena = parts[0];
+                
+                if (parts.Length > 1 && !parts[1].Contains("NINGUNO"))
+                {
+                    samitoResult.CodigosArchivos = parts[1]
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToList();
+                }
+            }
+            else
+            {
+                samitoResult.Resena = fullText;
+            }
+
+            return samitoResult;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Samito] Error en búsqueda: {ex.Message}");
+            return new SamitoSearchResponse { Resena = "Lo siento, tuve un problema al procesar tu búsqueda. Inténtalo de nuevo." };
+        }
+    }
+
     private async Task AsegurarAutenticacion(string usuario)
     {
         try
@@ -139,5 +274,14 @@ Pregunta del usuario: {pregunta}";
         {
             Console.WriteLine($"[IAService] Error de autenticación de servicio para {usuario}: {ex.Message}");
         }
+    }
+
+    public SamitoConfig GetSamitoConfig()
+    {
+        return new SamitoConfig
+        {
+            Nombre = _samitoName,
+            Dominio = _samitoDomain
+        };
     }
 }

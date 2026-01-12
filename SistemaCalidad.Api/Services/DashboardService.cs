@@ -56,31 +56,32 @@ public class DashboardService : IDashboardService
         // 1. Totales y Estados
         stats.TotalDocumentos = await _context.Documentos.CountAsync();
         
-        var docs = await _context.Documentos.ToListAsync();
-        stats.DocumentosPorEstado = docs.GroupBy(d => d.Estado.ToString())
-                                        .Select(g => new StatItemDto { Nombre = g.Key, Cantidad = g.Count() })
-                                        .ToList();
+        stats.DocumentosPorEstado = await _context.Documentos
+            .GroupBy(d => d.Estado)
+            .Select(g => new StatItemDto { Nombre = g.Key.ToString(), Cantidad = g.Count() })
+            .ToListAsync();
         
-        stats.DocumentosPorArea = docs.GroupBy(d => d.Area.ToString())
-                                      .Select(g => new StatItemDto { Nombre = g.Key, Cantidad = g.Count() })
-                                      .ToList();
+        stats.DocumentosPorArea = await _context.Documentos
+            .GroupBy(d => d.Area)
+            .Select(g => new StatItemDto { Nombre = g.Key.ToString(), Cantidad = g.Count() })
+            .ToListAsync();
 
         // 2. Alertas de Revisión Anual
         var limiteRevision = DateTime.UtcNow.AddYears(-1);
-        var vencidos = docs.Where(d => d.Estado == EstadoDocumento.Aprobado && 
-                                     (d.FechaActualizacion ?? d.FechaCreacion) < limiteRevision).ToList();
+        var vencidos = await _context.Documentos
+            .Where(d => d.Estado == EstadoDocumento.Aprobado && 
+                        (d.FechaActualizacion ?? d.FechaCreacion) < limiteRevision)
+            .Select(d => new DocumentoAlertaDto {
+                Id = d.Id,
+                Codigo = d.Codigo,
+                Titulo = d.Titulo,
+                Mensaje = "Revisión anual pendiente.",
+                UltimaRevision = d.FechaActualizacion ?? d.FechaCreacion
+            })
+            .ToListAsync();
         
         stats.DocumentosRevisionVencida = vencidos.Count;
-        foreach (var v in vencidos)
-        {
-            stats.AlertasCriticas.Add(new DocumentoAlertaDto {
-                Id = v.Id,
-                Codigo = v.Codigo,
-                Titulo = v.Titulo,
-                Mensaje = "Revisión anual pendiente.",
-                UltimaRevision = v.FechaActualizacion ?? v.FechaCreacion
-            });
-        }
+        stats.AlertasCriticas = vencidos;
 
         // 3. Mejora Continua
         stats.NoConformidadesAbiertas = await _context.NoConformidades
