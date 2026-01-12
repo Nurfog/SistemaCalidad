@@ -116,7 +116,7 @@ const NoConformidades = () => {
                     <h1>No Conformidades y Acciones</h1>
                     <p>Gestión de hallazgos y mejora continua NCh 2728</p>
                 </div>
-                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                {(user?.Rol?.includes('Administrador') || user?.Rol?.includes('Escritor')) && (
                     <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
                         <Plus size={20} />
                         <span>Levantar NC</span>

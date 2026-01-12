@@ -232,7 +232,7 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
 
                                     {/* Botones de Acción */}
                                     <div className="accion-actions">
-                                        {!acc.fechaEjecucion && (user?.Rol === 'Administrador' || user?.Rol === 'Escritor' || localStorage.getItem('usuario_id') === acc.responsable) && (
+                                        {!acc.fechaEjecucion && (user?.Rol?.includes('Administrador') || user?.Rol?.includes('Escritor') || localStorage.getItem('usuario_id') === acc.responsable) && (
                                             <button
                                                 className="btn-success-mini"
                                                 onClick={async () => {
@@ -250,7 +250,7 @@ const NCDetailsModal = ({ isOpen, onClose, nc, onUpdate }) => {
                                             </button>
                                         )}
 
-                                        {acc.fechaEjecucion && !acc.observacionesVerificacion && user?.Rol === 'Administrador' && (
+                                        {acc.fechaEjecucion && !acc.observacionesVerificacion && user?.Rol?.includes('Administrador') && (
                                             <button
                                                 className="btn-primary-mini"
                                                 onClick={() => {

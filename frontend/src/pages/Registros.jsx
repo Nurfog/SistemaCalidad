@@ -132,7 +132,7 @@ const Registros = () => {
                     </div>
                     <p>Evidencias y control documental</p>
                 </div>
-                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                {(user?.Rol?.includes('Administrador') || user?.Rol?.includes('Escritor')) && (
                     <div className="header-actions" style={{ display: 'flex', gap: '1rem' }}>
                         {!carpetaActual && (
                             <button className="btn-secondary" onClick={() => setIsCarpetaModalOpen(true)}>

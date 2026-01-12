@@ -28,13 +28,13 @@ public class Documento
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     
     public DateTime? FechaActualizacion { get; set; }
+    
+    public string? EncabezadoAdicional { get; set; }
+    public string? PiePaginaPersonalizado { get; set; }
 
     // Propiedad de navegación para las versiones
     public virtual ICollection<VersionDocumento> Revisiones { get; set; } = new List<VersionDocumento>();
 
-    // Relación con Carpetas
-    public int? CarpetaDocumentoId { get; set; }
-
-    [ForeignKey("CarpetaDocumentoId")]
-    public CarpetaDocumento? Carpeta { get; set; }
+    // Relación Muchos a Muchos con Carpetas
+    public virtual ICollection<CarpetaDocumento> Carpetas { get; set; } = new List<CarpetaDocumento>();
 }

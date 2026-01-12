@@ -92,7 +92,7 @@ const Anexos = () => {
                     <h1>Anexos y Plantillas Maestras</h1>
                     <p>Formatos obligatorios y documentos complementarios del SGC</p>
                 </div>
-                {(user?.Rol === 'Administrador' || user?.Rol === 'Escritor') && (
+                {(user?.Rol?.includes('Administrador') || user?.Rol?.includes('Escritor')) && (
                     <button className="btn-primary" onClick={() => setIsModalOpen(true)}>
                         <Plus size={20} />
                         <span>Nueva Plantilla</span>

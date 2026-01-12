@@ -26,11 +26,18 @@
     color: var(--primary);
 }
 
+.form-group.divider {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
 .editor-area {
     background: white;
     min-height: 700px;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 /* Ajustes de React Quill */
@@ -54,6 +61,83 @@
 
 .ql-editor {
     min-height: 600px;
+}
+
+/* WORKSPACE LAYOUT */
+.editor-workspace {
+    display: flex;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.quill-wrapper {
+    flex: 1;
+    border-right: 1px solid var(--border-color);
+}
+
+.blocks-sidebar {
+    width: 200px;
+    background: #f8fafc;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+}
+
+.blocks-sidebar h4 {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.blocks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.block-btn {
+    background: white;
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    color: var(--text-secondary);
+}
+
+.block-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(56, 189, 248, 0.05);
+}
+
+.helper-box {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 12px;
+    border-radius: 8px;
+    color: #1e40af;
+}
+
+.helper-box h5 {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.helper-box code {
+    display: block;
+    background: white;
+    padding: 4px;
+    border-radius: 4px;
+    margin-top: 4px;
+    font-size: 0.75rem;
 }
 
 /* Modal de Documentos Base */
@@ -96,4 +180,31 @@
     .metadata-panel {
         position: static;
     }
+}
+
+/* CARGADOR IA */
+.ia-extraction-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    text-align: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.ia-extraction-loader p {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1.1rem;
+    max-width: 400px;
 }

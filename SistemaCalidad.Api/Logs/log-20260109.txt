@@ -1,0 +1,37 @@
+2026-01-09 13:29:18.405 -03:00 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-01-09 13:29:18.576 -03:00 [INF] Executed DbCommand (138ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT GET_LOCK('__sistemacalidad_nch2728_EFMigrationsLock', 259200)
+2026-01-09 13:29:18.761 -03:00 [INF] Executed DbCommand (139ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
+    `MigrationId` varchar(150) CHARACTER SET utf8mb4 NOT NULL,
+    `ProductVersion` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK___EFMigrationsHistory` PRIMARY KEY (`MigrationId`)
+) CHARACTER SET=utf8mb4;
+2026-01-09 13:29:19.848 -03:00 [INF] Executed DbCommand (142ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='sistemacalidad_nch2728' AND TABLE_NAME='__EFMigrationsHistory';
+2026-01-09 13:29:19.988 -03:00 [INF] Executed DbCommand (137ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT `MigrationId`, `ProductVersion`
+FROM `__EFMigrationsHistory`
+ORDER BY `MigrationId`;
+2026-01-09 13:29:19.996 -03:00 [INF] Applying migration '20260109162904_ManyToManyFolders'.
+2026-01-09 13:29:20.188 -03:00 [INF] Executed DbCommand (180ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE `Documentos` DROP FOREIGN KEY `FK_Documentos_CarpetasDocumentos_CarpetaDocumentoId`;
+2026-01-09 13:29:20.354 -03:00 [INF] Executed DbCommand (164ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE `Documentos` DROP INDEX `IX_Documentos_CarpetaDocumentoId`;
+2026-01-09 13:29:20.525 -03:00 [INF] Executed DbCommand (170ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE `Documentos` DROP COLUMN `CarpetaDocumentoId`;
+2026-01-09 13:29:20.740 -03:00 [INF] Executed DbCommand (213ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE `DocumentoCarpetas` (
+    `CarpetasId` int NOT NULL,
+    `DocumentosId` int NOT NULL,
+    CONSTRAINT `PK_DocumentoCarpetas` PRIMARY KEY (`CarpetasId`, `DocumentosId`),
+    CONSTRAINT `FK_DocumentoCarpetas_CarpetasDocumentos_CarpetasId` FOREIGN KEY (`CarpetasId`) REFERENCES `CarpetasDocumentos` (`Id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_DocumentoCarpetas_Documentos_DocumentosId` FOREIGN KEY (`DocumentosId`) REFERENCES `Documentos` (`Id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+2026-01-09 13:29:20.914 -03:00 [INF] Executed DbCommand (173ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX `IX_DocumentoCarpetas_DocumentosId` ON `DocumentoCarpetas` (`DocumentosId`);
+2026-01-09 13:29:21.057 -03:00 [INF] Executed DbCommand (141ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+VALUES ('20260109162904_ManyToManyFolders', '9.0.0');
+2026-01-09 13:29:21.331 -03:00 [INF] Executed DbCommand (135ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT RELEASE_LOCK('__sistemacalidad_nch2728_EFMigrationsLock')

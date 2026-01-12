@@ -31,6 +31,8 @@ Gestión completa del ciclo de vida documental con flujo de aprobación formal.
 - **Notificaciones Automáticas:** Envío de correos electrónicos a Administradores y Encargados cuando se solicita una revisión o se aprueba un documento.
 - **Anexos y Plantillas:** Módulo dedicado para la descarga de formularios oficiales de la norma (Asistencia, Listados Maestros, etc.) (Cláusula 4.2.3).
 - **Versionamiento:** Creación automática de nuevas versiones, manteniendo el historial completo de cambios.
+- **Estructura Multicarpeta (M2M):** Un mismo documento puede estar asociado a múltiples carpetas organizativas. Al actualizar el documento, el cambio se refleja instantáneamente en todas sus ubicaciones.
+- **Carga Masiva Inteligente:** Capacidad de subir estructuras completas de carpetas con de-duplicación automática de archivos redundantes.
 - **Documentos Externos:** Módulo para el control de normativas legales, manuales de equipos o reglamentos externos (Cláusula 4.2.3 f).
 
 ### 2. Control de Registros (Cláusula 4.2.4)
@@ -57,6 +59,14 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
 - **Exportación de Evidencia:** Generación de reportes en formato CSV del "Listado Maestro de Documentos" y "Registro de No Conformidades", listos para ser presentados ante auditores externos de SENCE o certificadoras.
 
 ---
+
+## 🤖 IA Calidad (Inteligencia Documental)
+
+El sistema integra un asistente de IA capaz de procesar toda la documentación almacenada para responder consultas semánticas:
+- **Chat Semántico:** Los usuarios pueden preguntar sobre procedimientos específicos y recibir respuestas basadas exclusivamente en la documentación oficial.
+- **Sincronización:** Cada vez que se aprueba o actualiza un documento, la base de conocimiento de la IA se actualiza automáticamente.
+
+---
  
  ## 💎 Nuevas Capacidades (Roadmap v2)
  
@@ -70,6 +80,7 @@ Tratamiento de No Conformidades (NC) y acciones de mejora.
  
  ### ⚡ Experiencia de Usuario Premium
  - **Notificaciones en Tiempo Real (SignalR):** Alertas instantáneas en pantalla cuando un documento requiere aprobación o es rechazado, eliminando la necesidad de recargar la página.
+ - **Visor Seguro (Zero-Trust):** Renderizado de documentos en Canvas para prevenir la copia de texto, bloqueando el clic derecho y añadiendo marcas de agua visuales dinámicas.
  - **Modo Oscuro Integrado:** Interfaz adaptable (Claro/Oscuro) que reduce la fatiga visual.
  - **Observabilidad:** Logging estructurado con **Serilog** para auditoría forense de errores y eventos del sistema.
  
@@ -81,10 +92,12 @@ El sistema utiliza un esquema de **Seguridad Híbrida** vinculado al sistema cen
 
 - **Autenticación Centralizada:** Valida identidad y contraseñas (PLANO/SHA-1) contra la tabla de usuarios central.
 - **Validación de Estado "Kill-Switch":** Un Middleware verifica en **tiempo real** el estado `activo = 1` del usuario. Si es desactivado en el sistema central, pierde el acceso a la API instantáneamente.
-- **Control de Acceso Basado en Roles (RBAC):**
-    - `Administrador`: Control total, aprobación de documentos y gestión de auditoría.
-    - `Escritor`: Carga de documentos, solicitud de revisión y gestión de No Conformidades.
-    - `Lector`: Solo consulta de documentos ya aprobados y vigentes.
+- **Control de Acceso Basado en Roles (RBAC Híbrido):**
+    - **Soporte Multi-perfil:** Un usuario puede tener asignados múltiples roles (ej: Responsable + Auditor) separándolos por coma en la base de datos.
+    - `Administrador`: Control total y gestión de usuarios/configuraciones.
+    - `Escritor / Responsable`: Carga, edición y renombrado de documentos.
+    - `Auditor Interno / Externo`: Acceso a informes, trazabilidad y estado de cumplimiento.
+    - `Lector`: Consulta exclusiva de documentos aprobados.
 
 ---
 

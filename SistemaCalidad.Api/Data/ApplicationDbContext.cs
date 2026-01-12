@@ -32,11 +32,16 @@ public class ApplicationDbContext : DbContext
             .HasIndex(d => d.Codigo)
             .IsUnique();
 
+        // Relación Muchos a Muchos: Documento <-> CarpetaDocumento
+        modelBuilder.Entity<Documento>()
+            .HasMany(d => d.Carpetas)
+            .WithMany(c => c.Documentos)
+            .UsingEntity(j => j.ToTable("DocumentoCarpetas"));
+
         // Relación: Documento -> Versiones
         modelBuilder.Entity<VersionDocumento>()
             .HasOne(v => v.Documento)
             .WithMany(d => d.Revisiones)
-            .HasForeignKey(v => v.DocumentoId)
             .HasForeignKey(v => v.DocumentoId)
             .OnDelete(DeleteBehavior.Cascade);
 

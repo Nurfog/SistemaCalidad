@@ -83,15 +83,21 @@ public class AuthService : IAuthService
         return (false, "", "", "");
     }
 
-    private string GenerateJwtToken(string username, string role, string fullName)
+    private string GenerateJwtToken(string username, string roleString, string fullName)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, username),
             new Claim("FullName", fullName),
-            new Claim(ClaimTypes.Role, role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Soporte para roles múltiples (separados por coma)
+        var roles = roleString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var r in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, r));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? ""));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

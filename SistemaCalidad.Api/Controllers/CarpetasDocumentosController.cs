@@ -157,8 +157,8 @@ public class CarpetasDocumentosController : ControllerBase
         if (carpeta == null) return NotFound();
 
         // Verificar si tiene contenido
-        // Chequeamos si hay documentos asociados a esta carpeta usando count en la tabla documentos
-        var tieneDocumentos = await _context.Documentos.AnyAsync(d => d.CarpetaDocumentoId == id);
+        // Chequeamos si hay documentos asociados a esta carpeta
+        var tieneDocumentos = await _context.Documentos.AnyAsync(d => d.Carpetas.Any(c => c.Id == id));
         
         if (carpeta.Subcarpetas.Any() || tieneDocumentos)
         {

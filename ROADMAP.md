@@ -8,12 +8,15 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 - [x] Servicio de almacenamiento de archivos local.
 - [x] Controladores básicos de carga y descarga.
 - [x] Versionamiento automático de documentos.
+- [x] **Estructura Many-to-Many:** Un documento puede estar en múltiples carpetas sin duplicidad física (Novedad ✅).
+- [x] **De-duplicación Global:** Lógica inteligente de carga masiva para evitar archivos huérfanos.
 - [x] Configuración de Git (`.gitignore`, `.gitattributes`).
 
 ## 🟧 Fase 2: Control y Seguridad (Completado ✅)
 - [x] **Sistema de Autenticación y Roles:**
   - Implementación de JWT vinculado a `sige_sam_v3`.
-  - Roles: Administrador, Escritor, Lector.
+  - Soporte Multi-perfil: Usuarios con múltiples roles activos (ej: Auditor + Responsable) (Novedad ✅).
+  - Roles: Administrador, Escritor, Responsable, Lector, Auditor Interno/externo.
 - [x] **Validación en Tiempo Real (Kill-Switch):**
   - Verificación de estado `activo` contra el sistema central en cada petición.
 - [x] **Workflow de Aprobación:**
@@ -66,13 +69,15 @@ Este documento detalla la hoja de ruta para completar la API de administración 
 ## 📄 Documentación (Nueva ✅)
 - [x] **Manual de Usuario:** Guía visual para el personal administrativo.
 - [x] **README Técnico:** Instrucciones de despliegue y desarrollo.
-## 🔮 Roadmap v3: Inteligencia y Seguridad Visual (Planificado)
-- [ ] **Visor Documental Seguro (Zero-Trust):**
-  - [ ] Implementación de `react-pdf` para renderizado en Canvas (Evita selección de texto nativa).
-  - [ ] Capa de seguridad UI: Bloqueo de clic derecho, impresión y atajos de copia.
-  - [ ] Marca de agua "Visualización en Pantalla" para prevenir capturas de pantalla limpias.
-  - [ ] Modo "Solo Lectura Estricto": Streaming del PDF sin entregar la URL del archivo real.
-- [ ] **Inteligencia Artificial (Costo Cero / Low-Cost):**
-  - [ ] Investigación de APIs gratuitas (Google Gemini Flash / HuggingFace).
-  - [ ] **Chat Documental:** Índice de búsqueda semántica simple para responder preguntas sobre procedimientos.
-  - [ ] **Asistente de Redacción:** Sugerencias para corrección de redacción en No Conformidades.
+## 🔮 Roadmap v3: Inteligencia y Seguridad Visual (Completado ✅)
+- [x] **Visor Documental Seguro (Zero-Trust):**
+  - [x] Implementación de `SecureDocViewer` con renderizado en Canvas.
+  - [x] Capa de seguridad UI: Bloqueo de clic derecho, impresión y atajos de copia.
+  - [x] Marca de agua visual dinámica sobre el visor.
+- [x] **Inteligencia Artificial (IA Corporativa):**
+  - [x] **Chat Documental:** Búsqueda semántica usando RAG (Retrieval-Augmented Generation).
+  - [x] Sincronización automática de base de conocimiento con S3.
+
+## 🚀 Próximos pasos y Mantenimiento
+- [ ] Optimización de índices de búsqueda para grandes volúmenes de datos.
+- [ ] Módulo de capacitación y seguimiento de lectura obligatoria.
