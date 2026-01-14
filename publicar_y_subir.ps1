@@ -3,6 +3,7 @@
 
 Write-Host "----------------------------------------------------" -ForegroundColor Cyan
 Write-Host "🚀 Iniciando proceso de publicación de la API..."
+Write-Host "📜 Nota: La base de datos se actualizará automáticamente al iniciar la aplicación." -ForegroundColor Cyan
 Write-Host "----------------------------------------------------" -ForegroundColor Cyan
 
 $proyectoDir = "d:\mio\DEV\SistemaCalidad\SistemaCalidad.Api"

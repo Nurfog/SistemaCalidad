@@ -12,6 +12,7 @@ namespace SistemaCalidad.Api.Services;
 public interface IDocumentConverterService
 {
     byte[] ConvertToPdf(byte[] content, string extension);
+    string ExtractText(byte[] content, string extension);
 }
 
 public class DocumentConverterService : IDocumentConverterService
@@ -25,6 +26,45 @@ public class DocumentConverterService : IDocumentConverterService
             ".pdf" => content,
             _ => throw new NotSupportedException($"La conversión para la extensión {extension} no está soportada.")
         };
+    }
+
+    public string ExtractText(byte[] content, string extension)
+    {
+        return extension.ToLower() switch
+        {
+            ".docx" => ExtractTextFromDocx(content),
+            ".pdf" => ExtractTextFromPdf(content),
+            ".txt" => Encoding.UTF8.GetString(content),
+            _ => string.Empty
+        };
+    }
+
+    private string ExtractTextFromDocx(byte[] content)
+    {
+        using (var msInput = new MemoryStream(content))
+        {
+            var converter = new DocumentConverter();
+            var result = converter.ExtractRawText(msInput);
+            return result.Value;
+        }
+    }
+
+    private string ExtractTextFromPdf(byte[] content)
+    {
+        using (var msInput = new MemoryStream(content))
+        using (var reader = new PdfReader(msInput))
+        using (var pdfDoc = new PdfDocument(reader))
+        {
+            var text = new StringBuilder();
+            for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+            {
+                var page = pdfDoc.GetPage(i);
+                var strategy = new iText.Kernel.Pdf.Canvas.Parser.Listener.LocationTextExtractionStrategy();
+                var currentText = iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor.GetTextFromPage(page, strategy);
+                text.AppendLine(currentText);
+            }
+            return text.ToString();
+        }
     }
 
     private byte[] ConvertDocxToPdf(byte[] content)

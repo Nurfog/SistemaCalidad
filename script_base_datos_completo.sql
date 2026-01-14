@@ -172,3 +172,22 @@ VALUES ('Registro de Asistencia', 'ANX-SGC-002', 'Plantilla oficial para registr
 
 REPLACE INTO `Anexos` (`Nombre`, `Codigo`, `Descripcion`, `Formato`, `EsObligatorio`, `RutaArchivo`) 
 VALUES ('Detección de Necesidades de Capacitación', 'ANX-SGC-003', 'Formulario para levantamiento de necesidades.', 'DOCX', 0, 'Templates/deteccion_necesidades.docx');
+
+-- ==========================================================
+-- 6. CAPACIDADES DE INTELIGENCIA (RAG LOCAL)
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS `DocumentoSegmentos` (
+    `Id` INT NOT NULL AUTO_INCREMENT,
+    `DocumentoId` INT NOT NULL,
+    `Contenido` TEXT NOT NULL,
+    `Vector` LONGBLOB NOT NULL, -- Almacena float[] como bytes (384 dim)
+    `Pagina` INT NOT NULL DEFAULT 0,
+    `Seccion` VARCHAR(255) NULL,
+    `FechaCreacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`Id`),
+    INDEX `IX_DocumentoSegmentos_DocumentoId` (`DocumentoId`),
+    CONSTRAINT `FK_Segmentos_Documentos` 
+        FOREIGN KEY (`DocumentoId`) REFERENCES `Documentos` (`Id`) 
+        ON DELETE CASCADE
+) ENGINE=InnoDB;

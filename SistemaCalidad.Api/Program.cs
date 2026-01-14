@@ -162,20 +162,6 @@ else
 }
 
 // Configuración de IA (Google Gemini / OpenCCB)
-var googleApiKey = Environment.GetEnvironmentVariable("GOOGLE_AI_KEY");
-var aiApiUrl = Environment.GetEnvironmentVariable("AI_API_URL");
-
-if (!string.IsNullOrEmpty(googleApiKey)) builder.Configuration["GoogleAI:ApiKey"] = googleApiKey;
-if (!string.IsNullOrEmpty(aiApiUrl)) 
-{
-    builder.Configuration["AI_API_URL"] = aiApiUrl;
-    Console.WriteLine($"[Startup] 🤖 IA configurada (OpenCCB AI via: {aiApiUrl})");
-}
-else 
-{
-    Console.WriteLine("[Startup] ⚠️ ADVERTENCIA: No se detectó AI_API_URL. Usando localhost por defecto.");
-}
-
 builder.Services.AddSingleton<TemplateService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
@@ -184,11 +170,10 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IWatermarkService, WatermarkService>();
 builder.Services.AddScoped<IDocumentConverterService, DocumentConverterService>();
-builder.Services.AddHttpClient<IIAService, IAService>(client => 
-{
-    client.Timeout = TimeSpan.FromMinutes(10); // Aumentar hasta 10 minutos por posibles retrasos en hardware local
-});
-// builder.Services.AddHostedService<IASyncBackgroundService>(); // Deshabilitado temporalmente
+
+// Configuración de RAG Local (Búsqueda Semántica offline)
+builder.Services.AddSingleton<SmartComponents.LocalEmbeddings.LocalEmbedder>();
+builder.Services.AddScoped<ILocalRAGService, LocalRAGService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -238,7 +223,21 @@ Console.WriteLine("[Startup] Pipeline configurado completamente.");
 // Fallback para SPA (Cualquier ruta que no sea API va a index.html)
 app.MapFallbackToFile("index.html");
 
-// La base de datos se maneja manualmente via scripts SQL
+// Inicialización de la Base de Datos (Migración Automática de Vectores)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        DbInitializer.Initialize(context);
+        Console.WriteLine("[Startup] Verificación de base de datos completada.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Error inicializando DB: {ex.Message}");
+    }
+}
 
 try 
 {

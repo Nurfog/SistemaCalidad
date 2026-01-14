@@ -26,9 +26,9 @@ public class DocumentosController : ControllerBase
     private readonly IWatermarkService _watermarkService;
     private readonly IHubContext<NotificacionHub> _hubContext;
     private readonly IDocumentConverterService _converterService;
-    private readonly IIAService _iaService;
+    private readonly ILocalRAGService _ragService;
 
-    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService, IWatermarkService watermarkService, IHubContext<NotificacionHub> hubContext, IDocumentConverterService converterService, IIAService iaService)
+    public DocumentosController(ApplicationDbContext context, IFileStorageService fileService, IAuditoriaService auditoria, IEmailService emailService, IWatermarkService watermarkService, IHubContext<NotificacionHub> hubContext, IDocumentConverterService converterService, ILocalRAGService ragService)
     {
         _context = context;
         _fileService = fileService;
@@ -37,7 +37,7 @@ public class DocumentosController : ControllerBase
         _watermarkService = watermarkService;
         _hubContext = hubContext;
         _converterService = converterService;
-        _iaService = iaService;
+        _ragService = ragService;
     }
 
     [Authorize(Roles = "Administrador")]
@@ -97,11 +97,6 @@ public class DocumentosController : ControllerBase
                 $"Se realizó una limpieza general del sistema. Archivos físicos eliminados: {archivosBorrados}.");
 
             // 5. Sincronizar IA (para que limpie su KB)
-            try
-            {
-                _ = _iaService.SincronizarS3Async();
-            }
-            catch { }
 
             return Ok(new 
             { 
@@ -230,7 +225,14 @@ public class DocumentosController : ControllerBase
         _context.Documentos.Add(documento);
         await _context.SaveChangesAsync();
 
-        var rutaArchivo = await _fileService.SaveFileAsync(archivo.OpenReadStream(), archivo.FileName, "Documentos");
+        byte[] archivoBytes;
+        using (var ms = new MemoryStream())
+        {
+            await archivo.CopyToAsync(ms);
+            archivoBytes = ms.ToArray();
+        }
+
+        var rutaArchivo = await _fileService.SaveFileAsync(new MemoryStream(archivoBytes), archivo.FileName, "Documentos");
 
         var revision = new VersionDocumento
         {
@@ -248,8 +250,9 @@ public class DocumentosController : ControllerBase
         _context.VersionesDocumento.Add(revision);
         await _context.SaveChangesAsync();
 
-        // Disparar sincronización con IA (Base de Conocimiento)
-        _ = _iaService.SincronizarS3Async();
+        // Disparar sincronización con IA y RAG Local
+        
+        await ProcesarRAGAsync(documento.Id, archivoBytes, archivo.FileName);
 
         return CreatedAtAction(nameof(GetDocumentos), new { id = documento.Id }, documento);
     }
@@ -264,7 +267,14 @@ public class DocumentosController : ControllerBase
         var actual = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
         if (actual != null) actual.EsVersionActual = false;
 
-        var rutaArchivo = await _fileService.SaveFileAsync(archivo.OpenReadStream(), archivo.FileName, "Documentos");
+        byte[] archivoBytes;
+        using (var ms = new MemoryStream())
+        {
+            await archivo.CopyToAsync(ms);
+            archivoBytes = ms.ToArray();
+        }
+
+        var rutaArchivo = await _fileService.SaveFileAsync(new MemoryStream(archivoBytes), archivo.FileName, "Documentos");
         
         documento.VersionActual++;
         documento.FechaActualizacion = DateTime.UtcNow;
@@ -285,8 +295,9 @@ public class DocumentosController : ControllerBase
         _context.VersionesDocumento.Add(revision);
         await _context.SaveChangesAsync();
 
-        // Disparar sincronización con IA (Base de Conocimiento)
-        _ = _iaService.SincronizarS3Async();
+        // Disparar sincronización con IA y RAG Local
+        
+        await ProcesarRAGAsync(documento.Id, archivoBytes, archivo.FileName);
 
         return Ok(documento);
     }
@@ -494,15 +505,31 @@ public class DocumentosController : ControllerBase
             var documento = await _context.Documentos.FirstOrDefaultAsync(d => d.Id == id);
             if (documento == null) return NotFound();
 
-            // 1. Consultar a la IA usando RAG (Knowledge Base)
+            // 1. Consultar usando RAG Local
             var usuarioAi = User.Identity?.Name ?? "anonimo";
             
-            // Ya no procesamos el PDF aquí, la IA lo tiene en su KB (S3 Sync)
-            var respuesta = await _iaService.GenerarRespuesta(request.Pregunta, null, usuarioAi);
+            // Buscar contexto relevante en la base de datos local
+            var segmentos = await _ragService.BuscarSimilares(request.Pregunta, 5);
+            
+            if (segmentos == null || !segmentos.Any())
+            {
+                return Ok(new { respuesta = "No encontré información específica en los documentos que responda a tu pregunta." });
+            }
 
-            await _auditoria.RegistrarAccionAsync("CONSULTA_IA", "Documento", id, $"Pregunta: {request.Pregunta}");
+            var respuesta = new StringBuilder();
+            respuesta.AppendLine("He analizado los manuales y he encontrado los siguientes puntos relevantes:");
+            respuesta.AppendLine();
 
-            return Ok(new { respuesta });
+            foreach (var seg in segmentos)
+            {
+                respuesta.AppendLine($"- {seg.Contenido}");
+                if (!string.IsNullOrEmpty(seg.Seccion)) respuesta.AppendLine($"  (Sección: {seg.Seccion})");
+                respuesta.AppendLine();
+            }
+
+            await _auditoria.RegistrarAccionAsync("CONSULTA_RAG_LOCAL", "Documento", id, $"Pregunta: {request.Pregunta}");
+
+            return Ok(new { respuesta = respuesta.ToString() });
         }
         catch (Exception ex)
         {
@@ -624,8 +651,8 @@ public class DocumentosController : ControllerBase
             await _context.SaveChangesAsync();
             await _auditoria.RegistrarAccionAsync("REDACTAR_DOCUMENTO", "Documento", documento.Id, $"Redactó versión {version} de: {documento.Titulo}");
 
-            // Disparar sincronización con IA (Base de Conocimiento)
-            _ = _iaService.SincronizarS3Async();
+            // Disparar sincronización con RAG Local
+            await ProcesarRAGAsync(documento.Id, pdfBytes, nombreArchivo);
 
             return Ok(documento);
         }
@@ -651,9 +678,6 @@ public class DocumentosController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Disparar sincronización con IA para actualizar metadatos en la KB
-        _ = _iaService.SincronizarS3Async();
-
         return Ok(new { mensaje = "Documento actualizado correctamente" });
     }
 
@@ -672,15 +696,88 @@ public class DocumentosController : ControllerBase
             var versionActual = documento.Revisiones.FirstOrDefault(r => r.EsVersionActual);
             if (versionActual == null) return BadRequest("El documento no tiene una versión actual publicada.");
 
-            // Llamar al servicio de IA para extraer el HTML basado en el archivo de S3
-            // Usamos el nombre del archivo porque la IA ya está sincronizada con el bucket
-            var htmlExtraido = await _iaService.ExtraerContenidoHtml(versionActual.NombreArchivo);
+            // Extracción de contenido LOCAL
+            var datos = await _fileService.GetFileAsync(versionActual.RutaArchivo);
+            string textoExtraido;
+            using (var ms = new MemoryStream())
+            {
+                await datos.Content.CopyToAsync(ms);
+                var bytes = ms.ToArray();
+                var extension = Path.GetExtension(versionActual.NombreArchivo);
+                textoExtraido = _converterService.ExtractText(bytes, extension);
+            }
 
-            return Ok(new { contenidoHtml = htmlExtraido });
+            // Convertir texto plano a HTML básico para el editor
+            var htmlSimple = $"<div>{textoExtraido.Replace("\n", "<br/>")}</div>";
+
+            return Ok(new { contenidoHtml = htmlSimple });
         }
         catch (Exception ex)
         {
             return StatusCode(500, $"Error al extraer contenido con IA: {ex.Message}");
+        }
+    }
+
+    [Authorize(Roles = "Administrador")]
+    [HttpPost("rag-sync-total")]
+    public async Task<IActionResult> SincronizarRAGTotal()
+    {
+        try 
+        {
+            var documentos = await _context.Documentos.Include(d => d.Revisiones).ToListAsync();
+            int procesados = 0;
+            
+            foreach (var doc in documentos)
+            {
+                var actual = doc.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+                if (actual != null && !string.IsNullOrEmpty(actual.RutaArchivo))
+                {
+                    try 
+                    {
+                        var datos = await _fileService.GetFileAsync(actual.RutaArchivo);
+                        using (var ms = new MemoryStream())
+                        {
+                            await datos.Content.CopyToAsync(ms);
+                            var bytes = ms.ToArray();
+                            var extension = Path.GetExtension(actual.NombreArchivo);
+                            
+                            var texto = _converterService.ExtractText(bytes, extension);
+                            if (!string.IsNullOrWhiteSpace(texto))
+                            {
+                                await _ragService.IndexarDocumentoAsync(doc.Id, texto);
+                                procesados++;
+                            }
+                        }
+                    }
+                    catch (Exception ex) 
+                    {
+                        Console.WriteLine($"[RAG] Error procesando documento {doc.Id}: {ex.Message}");
+                    }
+                }
+            }
+            
+            return Ok(new { mensaje = "Sincronización RAG completada", documentosProcesados = procesados });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error en sincronización RAG: {ex.Message}");
+        }
+    }
+
+    private async Task ProcesarRAGAsync(int documentoId, byte[] archivoBytes, string nombreArchivo)
+    {
+        try 
+        {
+            var extension = Path.GetExtension(nombreArchivo);
+            var texto = _converterService.ExtractText(archivoBytes, extension);
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                await _ragService.IndexarDocumentoAsync(documentoId, texto);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RAG] Error en indexación automática: {ex.Message}");
         }
     }
 }
