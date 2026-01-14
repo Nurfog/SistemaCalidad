@@ -397,6 +397,7 @@
 
 .samito-response-card {
     background: white;
+    color: #1e1b4b; /* Forzar texto oscuro */
     border: 1px solid #e0e7ff;
     border-radius: 16px;
     overflow: hidden;

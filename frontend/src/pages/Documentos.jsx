@@ -69,7 +69,7 @@ const Documentos = () => {
     const [samitoLoading, setSamitoLoading] = useState(false);
     const [samitoResult, setSamitoResult] = useState(null);
     const [isSamitoMode, setIsSamitoMode] = useState(false);
-    const [samitoConfig, setSamitoConfig] = useState({ nombre: 'Samito', dominio: 'el Sistema' });
+    const [samitoConfig, setSamitoConfig] = useState({ nombre: 'Samito', dominio: 'SGC' });
 
     // Navegación de Carpetas
     const [carpetaActual, setCarpetaActual] = useState(null);
@@ -120,14 +120,6 @@ const Documentos = () => {
     useEffect(() => {
         fetchContenido();
 
-        // Cargar configuración de Samito
-        const fetchSamitoConfig = async () => {
-            try {
-                const res = await api.get('/IA/config');
-                setSamitoConfig(res.data);
-            } catch (e) { console.error('Error al cargar config de Samito'); }
-        };
-        fetchSamitoConfig();
     }, [carpetaActual, filtros]);
 
     const handleSearchSubmit = async (e) => {
@@ -257,6 +249,26 @@ const Documentos = () => {
     const getEstadoNombre = (estado) => ['Borrador', 'En Revisión', 'Aprobado', 'Rechazado', 'Obsoleto'][estado] || 'Desc.';
     const getAreaNombre = (area) => ['Dirección', 'Comercial', 'Operativa', 'Apoyo', 'Administrativa'][area] || 'GNR';
 
+    const handleSyncRAG = async () => {
+        if (!window.confirm("¿Seguro que deseas re-entrenar la Inteligencia Artificial con todos los documentos actuales? Esto puede tardar unos minutos.")) return;
+
+        setSamitoLoading(true);
+        setIsSamitoMode(true);
+        setSamitoResult({ mensaje: "Iniciando proceso de aprendizaje..." });
+
+        try {
+            const res = await api.post('/Documentos/rag-sync-total');
+            setSamitoResult({
+                mensaje: `¡Aprendizaje completado!\nDocumentos procesados: ${res.data.documentosProcesados}`
+            });
+        } catch (error) {
+            console.error("Error sync RAG:", error);
+            setSamitoResult({ mensaje: "Hubo un error al intentar aprender de los documentos. Revisa la consola." });
+        } finally {
+            setSamitoLoading(false);
+        }
+    };
+
     return (
         <div className="documentos-page">
             <header className="page-header">
@@ -267,6 +279,9 @@ const Documentos = () => {
                 <div style={{ display: 'flex', gap: '12px' }}>
                     {user?.Rol?.includes('Administrador') && (
                         <>
+                            <button className="btn-secondary" onClick={handleSyncRAG} title="Re-entrenar IA con documentos actuales">
+                                <Bot size={18} /> Entrenar IA
+                            </button>
                             <button className="btn-secondary" onClick={() => setIsCarpetaModalOpen(true)}>
                                 <FolderPlus size={18} /> Nueva Carpeta
                             </button>
