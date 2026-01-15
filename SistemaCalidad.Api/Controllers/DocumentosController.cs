@@ -189,72 +189,87 @@ public class DocumentosController : ControllerBase
         [FromForm] int? numeroRevision, 
         IFormFile archivo)
     {
-        Console.WriteLine($"[DocumentosController] POST /api/Documentos - Titulo: {titulo}, Codigo: {codigo}, Carpetas: {(carpetaIds != null ? string.Join(",", carpetaIds) : "null")}");
-        
-        if (archivo == null || archivo.Length == 0) 
+        try
         {
-            Console.WriteLine("[DocumentosController] Error: Archivo nulo o vacío");
-            return BadRequest("El archivo es obligatorio.");
-        }
-
-        int revisionInicial = numeroRevision ?? 1;
-
-        var documento = new Documento
-        {
-            Titulo = titulo,
-            Codigo = codigo,
-            Tipo = tipo,
-            Area = area,
-            Estado = EstadoDocumento.Borrador,
-            VersionActual = revisionInicial
-        };
-
-        // Vincular carpetas - Usamos un bucle para evitar error de traducción LINQ en colecciones primitivas
-        if (carpetaIds != null && carpetaIds.Length > 0)
-        {
-            foreach (var id in carpetaIds)
+            Console.WriteLine($"[DocumentosController] POST /api/Documentos - Titulo: {titulo}, Codigo: {codigo}, Carpetas: {(carpetaIds != null ? string.Join(",", carpetaIds) : "null")}");
+            
+            if (archivo == null || archivo.Length == 0) 
             {
-                var carpeta = await _context.CarpetasDocumentos.FindAsync(id);
-                if (carpeta != null) 
+                Console.WriteLine("[DocumentosController] Error: Archivo nulo o vacío");
+                return BadRequest("El archivo es obligatorio.");
+            }
+
+            int revisionInicial = numeroRevision ?? 1;
+
+            var documento = new Documento
+            {
+                Titulo = titulo,
+                Codigo = codigo,
+                Tipo = tipo,
+                Area = area,
+                Estado = EstadoDocumento.Borrador,
+                VersionActual = revisionInicial
+            };
+
+            // Vincular carpetas - Usamos un bucle para evitar error de traducción LINQ en colecciones primitivas
+            if (carpetaIds != null && carpetaIds.Length > 0)
+            {
+                foreach (var id in carpetaIds)
                 {
-                    documento.Carpetas.Add(carpeta);
+                    var carpeta = await _context.CarpetasDocumentos.FindAsync(id);
+                    if (carpeta != null) 
+                    {
+                        documento.Carpetas.Add(carpeta);
+                    }
                 }
             }
+
+            _context.Documentos.Add(documento);
+            try 
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException dbEx)
+            {
+                Console.WriteLine($"[DocumentosController] ERROR DB al crear documento '{codigo}': {dbEx.InnerException?.Message ?? dbEx.Message}");
+                return BadRequest($"Error de Base de Datos: {dbEx.InnerException?.Message ?? dbEx.Message}. Verifique que el código '{codigo}' no esté duplicado.");
+            }
+
+            byte[] archivoBytes;
+            using (var ms = new MemoryStream())
+            {
+                await archivo.CopyToAsync(ms);
+                archivoBytes = ms.ToArray();
+            }
+
+            var rutaArchivo = await _fileService.SaveFileAsync(new MemoryStream(archivoBytes), archivo.FileName, "Documentos");
+
+            var revision = new VersionDocumento
+            {
+                DocumentoId = documento.Id,
+                NumeroVersion = revisionInicial,
+                DescripcionCambio = revisionInicial == 1 ? "Creación inicial" : $"Carga inicial (Migración Rev {revisionInicial})",
+                NombreArchivo = archivo.FileName,
+                RutaArchivo = rutaArchivo,
+                TipoContenido = archivo.ContentType,
+                EsVersionActual = true,
+                CreadoPor = User.Identity?.Name ?? "Sistema",
+                EstadoRevision = "Pendiente"
+            };
+
+            _context.VersionesDocumento.Add(revision);
+            await _context.SaveChangesAsync();
+
+            // Disparar sincronización con IA y RAG Local
+            await ProcesarRAGAsync(documento.Id, archivoBytes, archivo.FileName);
+
+            return CreatedAtAction(nameof(GetDocumentos), new { id = documento.Id }, documento);
         }
-
-        _context.Documentos.Add(documento);
-        await _context.SaveChangesAsync();
-
-        byte[] archivoBytes;
-        using (var ms = new MemoryStream())
+        catch (Exception ex)
         {
-            await archivo.CopyToAsync(ms);
-            archivoBytes = ms.ToArray();
+            Console.WriteLine($"[DocumentosController] ERROR FATAL en CrearDocumento: {ex.Message}");
+            return StatusCode(500, $"Error Interno: {ex.Message}");
         }
-
-        var rutaArchivo = await _fileService.SaveFileAsync(new MemoryStream(archivoBytes), archivo.FileName, "Documentos");
-
-        var revision = new VersionDocumento
-        {
-            DocumentoId = documento.Id,
-            NumeroVersion = revisionInicial,
-            DescripcionCambio = revisionInicial == 1 ? "Creación inicial" : $"Carga inicial (Migración Rev {revisionInicial})",
-            NombreArchivo = archivo.FileName,
-            RutaArchivo = rutaArchivo,
-            TipoContenido = archivo.ContentType,
-            EsVersionActual = true,
-            CreadoPor = User.Identity?.Name ?? "Sistema",
-            EstadoRevision = "Pendiente"
-        };
-
-        _context.VersionesDocumento.Add(revision);
-        await _context.SaveChangesAsync();
-
-        // Disparar sincronización con IA y RAG Local
-        
-        await ProcesarRAGAsync(documento.Id, archivoBytes, archivo.FileName);
-
-        return CreatedAtAction(nameof(GetDocumentos), new { id = documento.Id }, documento);
     }
 
     [Authorize(Roles = "Escritor,Administrador")]
@@ -329,10 +344,39 @@ public class DocumentosController : ControllerBase
 
             // Conversión y Marca de Agua
             string extension = Path.GetExtension(versionVigente.NombreArchivo).ToLower();
-            string nombreDescarga = versionVigente.NombreArchivo;
-            string contentTypeDescarga = datosArchivo.ContentType;
 
-            if (extension == ".docx" || extension == ".txt" || extension == ".pdf")
+            // [FIX] Si no tiene extensión o es desconocida (ej: .27), detectarla por Magic Bytes
+            var knownExts = new HashSet<string> { ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt" };
+            if (string.IsNullOrWhiteSpace(extension) || !knownExts.Contains(extension))
+            {
+                var detected = _converterService.DetectExtension(contenido);
+                if (!string.IsNullOrEmpty(detected))
+                {
+                    extension = detected;
+                    Console.WriteLine($"[Descargar] Extensión corregida a: {extension}");
+                }
+            }
+
+            string nombreDescarga = versionVigente.NombreArchivo;
+            if (!nombreDescarga.EndsWith(extension) && !string.IsNullOrEmpty(extension)) 
+                nombreDescarga += extension;
+
+            string contentTypeDescarga = datosArchivo.ContentType;
+            if (contentTypeDescarga == "application/octet-stream" && !string.IsNullOrEmpty(extension))
+            {
+                // Corregir content type si era genérico
+                contentTypeDescarga = extension switch { 
+                    ".pdf" => "application/pdf", 
+                    ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    ".doc" => "application/msword", 
+                    ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    ".xls" => "application/vnd.ms-excel",
+                    _ => contentTypeDescarga 
+                };
+            }
+
+            // Soportar .xlsx .xls .doc en el visor mediante conversión a PDF
+            if (extension == ".docx" || extension == ".doc" || extension == ".xlsx" || extension == ".xls" || extension == ".txt" || extension == ".pdf")
             {
                 try 
                 {
@@ -722,45 +766,87 @@ public class DocumentosController : ControllerBase
     [HttpPost("rag-sync-total")]
     public async Task<IActionResult> SincronizarRAGTotal()
     {
+        var reporte = new List<object>();
         try 
         {
             var documentos = await _context.Documentos.Include(d => d.Revisiones).ToListAsync();
             int procesados = 0;
             
-            foreach (var doc in documentos)
+            // Optimización CRÍTICA: Bucle finito para evitar Timeouts
+            // 1. Cargar IDs ya indexados en memoria (Hashset para O(1))
+            var idsIndexados = new HashSet<int>(await _context.DocumentoSegmentos.Select(s => s.DocumentoId).Distinct().ToListAsync());
+            
+            int limiteLote = 25; // Procesar máximo 25 docs por click para asegurar respuesta rápida
+            
+            // Ordenar para consistencia
+            var documentosPendientes = documentos.OrderBy(d => d.Id).ToList(); 
+
+            foreach (var doc in documentosPendientes)
             {
-                var actual = doc.Revisiones.FirstOrDefault(r => r.EsVersionActual);
-                if (actual != null && !string.IsNullOrEmpty(actual.RutaArchivo))
+                // Chequeo Rápido en Memoria
+                if (idsIndexados.Contains(doc.Id))
                 {
-                    try 
+                    // No agregamos al reporte detalle para no saturar el JSON, solo contamos si queremos
+                    continue; 
+                }
+
+                if (procesados >= limiteLote)
+                {
+                    // Cortar ejecución para responder al cliente antes del Timeout
+                    break;
+                }
+
+                var actual = doc.Revisiones.FirstOrDefault(r => r.EsVersionActual);
+                if (actual == null || string.IsNullOrEmpty(actual.RutaArchivo))
+                {
+                    // Omitir silenciosamente o loguear minimo
+                    continue;
+                }
+
+                try 
+                {
+                    var datos = await _fileService.GetFileAsync(actual.RutaArchivo);
+                    if (datos.Content == null) continue;
+
+                    using (var ms = new MemoryStream())
                     {
-                        var datos = await _fileService.GetFileAsync(actual.RutaArchivo);
-                        using (var ms = new MemoryStream())
+                        await datos.Content.CopyToAsync(ms);
+                        var bytes = ms.ToArray();
+                        var extension = Path.GetExtension(actual.NombreArchivo);
+                        
+                        var texto = _converterService.ExtractText(bytes, extension);
+                        if (string.IsNullOrWhiteSpace(texto) || texto.Length < 100)
                         {
-                            await datos.Content.CopyToAsync(ms);
-                            var bytes = ms.ToArray();
-                            var extension = Path.GetExtension(actual.NombreArchivo);
-                            
-                            var texto = _converterService.ExtractText(bytes, extension);
-                            if (!string.IsNullOrWhiteSpace(texto))
-                            {
-                                await _ragService.IndexarDocumentoAsync(doc.Id, texto);
-                                procesados++;
-                            }
+                            reporte.Add(new { Id = doc.Id, Titulo = doc.Titulo, Estado = "Advertencia", Motivo = "Texto insuficiente/vacío." });
+                            continue;
                         }
+
+                        // Indexar
+                        await _ragService.IndexarDocumentoAsync(doc.Id, texto);
+                        
+                        reporte.Add(new { Id = doc.Id, Titulo = doc.Titulo, Estado = "Exito", Motivo = "Indexado." });
+                        procesados++;
                     }
-                    catch (Exception ex) 
-                    {
-                        Console.WriteLine($"[RAG] Error procesando documento {doc.Id}: {ex.Message}");
-                    }
+                }
+                catch (Exception ex) 
+                {
+                     reporte.Add(new { Id = doc.Id, Titulo = doc.Titulo, Estado = "Error", Motivo = ex.Message });
+                     Console.WriteLine($"[RAG] Error {doc.Id}: {ex.Message}");
                 }
             }
             
-            return Ok(new { mensaje = "Sincronización RAG completada", documentosProcesados = procesados });
+            int pendientes = documentos.Count - idsIndexados.Count - procesados;
+            var mensajeFinal = pendientes > 0 
+                ? $"Lote de {procesados} docs procesado. Faltan ~{pendientes}. PRESIONE 'ENTRENAR IA' DE NUEVO." 
+                : "Sincronización RAG completada (Todo al día).";
+
+            return Ok(new { mensaje = mensajeFinal, documentosProcesados = procesados, detalles = reporte, continuable = pendientes > 0 });
+            
+            return Ok(new { mensaje = "Sincronización RAG completada", documentosProcesados = procesados, detalles = reporte });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Error en sincronización RAG: {ex.Message}");
+            return StatusCode(500, new { error = $"Error general en sincronización: {ex.Message}", stack = ex.StackTrace });
         }
     }
 

@@ -40,9 +40,10 @@ const Layout = () => {
             {/* Sidebar */}
             <aside className="sidebar">
                 <div className="sidebar-header">
-                    <div className="brand">
-                        <div className="brand-dot"></div>
-                        <span>SGC Calidad</span>
+                    <div className="brand" style={{ justifyContent: 'center' }}>
+                        <div className="brand-logo-container" style={{ marginRight: 0 }}>
+                            <img src="/logo.png" alt="Logo" />
+                        </div>
                     </div>
                 </div>
 

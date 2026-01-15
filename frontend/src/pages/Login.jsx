@@ -33,7 +33,7 @@ const Login = () => {
             <div className="login-card">
                 <header>
                     <div className="logo-container">
-                        <ShieldCheck size={48} className="logo-icon" />
+                        <img src="/logo.png" alt="Logo" className="logo-image" />
                     </div>
                     <h1>NCh 2728:2015</h1>
                     <p className="subtitle">Gestión de Calidad e Innovación</p>

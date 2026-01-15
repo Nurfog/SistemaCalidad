@@ -350,7 +350,15 @@ const BulkUploadDialog = ({ open, onClose, currentFolderId, onUploadComplete }) 
                     }
 
                     formData.append('numeroRevision', item.version);
-                    formData.append('archivo', item.fileObj);
+
+                    // [FIX] Forzar nombre limpio: "CODIGO - Titulo.ext" o "Titulo.ext" si no hay código
+                    // Limpiamos caracteres ilegales para mayor seguridad aunque el navegador suele manejarlos
+                    const cleanTitle = item.newName.replace(/[\\/:*?"<>|]/g, '');
+                    const finalFileName = item.code
+                        ? `${item.code} - ${cleanTitle}.${item.extension.toLowerCase()}`
+                        : `${cleanTitle}.${item.extension.toLowerCase()}`;
+
+                    formData.append('archivo', item.fileObj, finalFileName);
 
                     await api.post('/Documentos', formData, {
                         headers: { 'Content-Type': 'multipart/form-data' }
@@ -489,9 +497,12 @@ const BulkUploadDialog = ({ open, onClose, currentFolderId, onUploadComplete }) 
                                                 {item.status === 'pending' && <span style={{ color: '#999', fontSize: '0.8rem' }}>Pendiente</span>}
                                                 {item.status === 'success' && <CheckCircle size={16} color="#10b981" />}
                                                 {item.status === 'error' && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444' }}>
-                                                        <AlertCircle size={16} />
-                                                        <span style={{ fontSize: '0.75rem' }} title={item.errorMsg}>Error</span>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', color: '#ef4444' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <AlertCircle size={16} />
+                                                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Error</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.7rem', marginTop: '2px' }}>{item.errorMsg}</div>
                                                     </div>
                                                 )}
                                             </td>

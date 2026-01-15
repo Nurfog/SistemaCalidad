@@ -259,7 +259,8 @@ const Documentos = () => {
         try {
             const res = await api.post('/Documentos/rag-sync-total');
             setSamitoResult({
-                mensaje: `¡Aprendizaje completado!\nDocumentos procesados: ${res.data.documentosProcesados}`
+                mensaje: res.data.mensaje,
+                detalles: res.data.detalles // [NUEVO] Pasamos los detalles para mostrarlos
             });
         } catch (error) {
             console.error("Error sync RAG:", error);
@@ -364,11 +365,33 @@ const Documentos = () => {
                                         </div>
                                     ) : (
                                         <div className="samito-content">
-                                            <p className="samito-message">{samitoResult.resena}</p>
-                                            <div className="samito-tip">
-                                                <Info size={14} />
-                                                <span>He filtrado la lista para mostrarte los documentos específicos mencionados.</span>
-                                            </div>
+                                            <p className="samito-message" style={{ whiteSpace: 'pre-line' }}>{samitoResult.mensaje || samitoResult.resena}</p>
+
+                                            {/* Detalles de Errores/Advertencias */}
+                                            {samitoResult.detalles && samitoResult.detalles.length > 0 && (
+                                                <div className="samito-details" style={{ marginTop: '1rem', maxHeight: '200px', overflowY: 'auto', background: 'rgba(255,255,255,0.5)', padding: '0.5rem', borderRadius: '4px' }}>
+                                                    <strong style={{ fontSize: '0.8rem', display: 'block', marginBottom: '0.5rem' }}>Reporte de Documentos:</strong>
+                                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.75rem' }}>
+                                                        {samitoResult.detalles.map((d, i) => (
+                                                            <li key={i} style={{ marginBottom: '4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                <span style={{
+                                                                    color: d.estado === 'Exito' ? 'green' : (d.estado === 'Error' ? 'red' : 'orange'),
+                                                                    fontWeight: 'bold'
+                                                                }}>{d.estado === 'Exito' ? '✓' : (d.estado === 'Error' ? '✗' : '⚠')}</span>
+                                                                <span style={{ flex: 1 }}><strong>#{d.id}</strong> {d.titulo}</span>
+                                                                <span style={{ opacity: 0.7 }}>{d.motivo}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {!samitoResult.mensaje && (
+                                                <div className="samito-tip">
+                                                    <Info size={14} />
+                                                    <span>He filtrado la lista para mostrarte los documentos específicos mencionados.</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

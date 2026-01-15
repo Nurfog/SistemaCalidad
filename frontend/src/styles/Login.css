@@ -37,11 +37,22 @@
 
 .logo-container {
     display: inline-flex;
-    padding: 16px;
-    background: rgba(56, 189, 248, 0.1);
-    border-radius: 20px;
-    margin-bottom: 20px;
-    color: var(--primary-color);
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.logo-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 50px;
+    display: block;
+    object-fit: contain;
 }
 
 .login-card h1 {

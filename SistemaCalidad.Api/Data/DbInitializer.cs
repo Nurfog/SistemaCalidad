@@ -28,6 +28,29 @@ public static class DbInitializer
         try 
         {
             context.Database.ExecuteSqlRaw(sql);
+            
+            // =================================================================================
+            // AUTO-MIGRACIÓN: Verificar columnas faltantes en Documentos (Agregadas recientemente)
+            // =================================================================================
+            
+            // 1. Agregar EncabezadoAdicional
+            try 
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF NOT EXISTS (
+                        SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+                        WHERE TABLE_NAME = 'Documentos' AND COLUMN_NAME = 'EncabezadoAdicional' AND TABLE_SCHEMA = DATABASE()
+                    ) THEN
+                        ALTER TABLE Documentos ADD COLUMN EncabezadoAdicional LONGTEXT NULL;
+                    END IF;");
+            }
+            catch {} // Ignorar si el motor no soporta IF EXISTS en bloque directo, usaremos try-catch forzado abajo
+
+            // Método fail-safe para MySQL: Intentar agregar y capturar error si ya existe
+            try { context.Database.ExecuteSqlRaw("ALTER TABLE Documentos ADD COLUMN EncabezadoAdicional LONGTEXT NULL;"); } catch {}
+            try { context.Database.ExecuteSqlRaw("ALTER TABLE Documentos ADD COLUMN PiePaginaPersonalizado LONGTEXT NULL;"); } catch {}
+            
+            Console.WriteLine("[DbInitializer] Verificación de esquema completada.");
         }
         catch (Exception ex)
         {

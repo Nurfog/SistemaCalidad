@@ -28,33 +28,83 @@ public class LocalRAGService : ILocalRAGService, IDisposable
     {
         _logger.LogInformation($"Indexando documento {documentoId} para RAG Local...");
 
-        // 1. Limpiar segmentos previos
-        var antiguos = _context.DocumentoSegmentos.Where(s => s.DocumentoId == documentoId);
-        _context.DocumentoSegmentos.RemoveRange(antiguos);
-
-        // 2. Fragmentación (Chunking) básica por párrafos
-        // En una implementación avanzada usaríamos solapamiento (overlap)
-        var párrafos = textoCompleto.Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries)
-                        .Where(p => p.Length > 50) // Ignorar fragmentos muy cortos
-                        .ToList();
-
-        foreach (var párrafo in párrafos)
+        if (string.IsNullOrWhiteSpace(textoCompleto)) 
         {
-            // Generar Embedding (Localmente en CPU)
-            var embedding = _embedder.Embed(párrafo);
-            
-            var segmento = new DocumentoSegmento
-            {
-                DocumentoId = documentoId,
-                Contenido = párrafo,
-                EmbeddingArray = embedding.Values.ToArray()
-            };
-
-            await _context.DocumentoSegmentos.AddAsync(segmento);
+            Console.WriteLine($"[RAG] OMITIDO: Documento {documentoId} tiene texto vacío.");
+            return;
         }
 
-        await _context.SaveChangesAsync();
-        _logger.LogInformation($"Indexación completada. {párrafos.Count} segmentos creados.");
+        // 2. Fragmentación (Chunking) básica por párrafos
+        var párrafos = textoCompleto.Split(new[] { "\n\n", "\r\n\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .Where(p => !string.IsNullOrWhiteSpace(p) && p.Length > 20) 
+                        .ToList();
+
+        Console.WriteLine($"[RAG] Documento {documentoId}: Texto {textoCompleto.Length} chars -> {párrafos.Count} párrafos.");
+
+        if (párrafos.Count == 0)
+        {
+             Console.WriteLine($"[RAG] OMITIDO: Documento {documentoId} no generó párrafos válidos tras limpieza.");
+             return;
+        }
+
+        var nuevosSegmentos = new List<DocumentoSegmento>();
+        
+        foreach (var párrafoRaw in párrafos)
+        {
+            try 
+            {
+                // Limitar longitud
+                var párrafo = párrafoRaw.Length > 2000 ? párrafoRaw.Substring(0, 2000) : párrafoRaw;
+                if (string.IsNullOrWhiteSpace(párrafo)) continue;
+
+                var embedding = _embedder.Embed(párrafo);
+                
+                // Validación paranoia: vector vacío?
+                if (embedding.Values.Length == 0)
+                {
+                     Console.WriteLine($"[RAG] ERROR: Embedding vacío para doc {documentoId}.");
+                     continue;
+                }
+
+                nuevosSegmentos.Add(new DocumentoSegmento
+                {
+                    DocumentoId = documentoId,
+                    Contenido = párrafo,
+                    // Asegurar copia del array para evitar problemas de referencia
+                    EmbeddingArray = embedding.Values.ToArray() 
+                });
+            }
+            catch (Exception ex)
+            {
+                // [IMPORTANTE] LOG DE ERROR REAL
+                Console.WriteLine($"[RAG] EXCEPCIÓN Embedding Doc {documentoId}: {ex.Message}");
+                // _logger.LogError ...
+            }
+        }
+
+        Console.WriteLine($"[RAG] Documento {documentoId}: Generados {nuevosSegmentos.Count} segmentos. (Intentando guardar...)");
+
+        // SOLO guardamos si se generó algo. Si falló todo, mantenemos lo viejo.
+        if (nuevosSegmentos.Count > 0)
+        {
+            // 1. Limpiar previos
+            var antiguos = _context.DocumentoSegmentos.Where(s => s.DocumentoId == documentoId);
+            _context.DocumentoSegmentos.RemoveRange(antiguos);
+
+            // 2. Insertar nuevos
+            await _context.DocumentoSegmentos.AddRangeAsync(nuevosSegmentos);
+            
+            await _context.SaveChangesAsync();
+            
+            Console.WriteLine($"[RAG] EXITOSO Documento {documentoId} guardado.");
+        }
+        else
+        {
+            Console.WriteLine($"[RAG] FALLIDO Documento {documentoId}: 0 segmentos válidos generados.");
+        }
+        
+        if (nuevosSegmentos.Count > 50) GC.Collect();
     }
 
     public async Task<List<DocumentoSegmento>> BuscarSimilares(string consulta, int limite = 5)

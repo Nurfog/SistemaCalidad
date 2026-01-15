@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.8.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageReference Include="itext7" Version="9.4.0" />
     <PackageReference Include="itext7.bouncy-castle-adapter" Version="9.4.0" />
     <PackageReference Include="itext7.pdfhtml" Version="6.3.0" />
@@ -20,7 +22,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" Version="1.2.45" />
-    <PackageReference Include="AWSSDK.S3" Version="3.7.400.10" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.401" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0" />

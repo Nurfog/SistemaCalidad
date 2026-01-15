@@ -10,6 +10,10 @@ using Amazon.Extensions.NETCore.Setup;
 using Serilog;
 using SistemaCalidad.Api.Middleware;
 using SistemaCalidad.Api.Hubs;
+using System.Text; // Asegurar uso de Encoding
+
+// Registrar proveedor de codificación para soporte de Excel/Word Legacy (Windows-1252, etc.)
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()

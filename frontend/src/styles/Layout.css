@@ -31,12 +31,18 @@
     color: var(--text-primary);
 }
 
-.brand-dot {
-    width: 12px;
-    height: 12px;
-    background: var(--primary);
-    border-radius: 50%;
-    box-shadow: 0 0 15px var(--primary);
+.brand-logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.brand-logo-container img {
+    height: 32px !important;
 }
 
 .sidebar-nav {
