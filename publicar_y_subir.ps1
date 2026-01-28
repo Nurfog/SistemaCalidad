@@ -63,7 +63,8 @@ if (Test-Path "$proyectoDir\.env") {
     $envContent = $envContent -replace "ASPNETCORE_ENVIRONMENT=Development", "ASPNETCORE_ENVIRONMENT=Production"
     $envContent = $envContent -replace "DB_HOST=localhost", "DB_HOST=ec2-18-222-25-254.us-east-2.compute.amazonaws.com"
     $envContent = $envContent -replace "DB_PASS=Smith.3976!", "DB_PASS=Smith3976!"
-    $envContent = $envContent -replace "AI_API_URL=.*", "AI_API_URL=https://t-800.norteamericano.cl"
+    $envContent = $envContent -replace "WHISPER_API_URL=.*", "WHISPER_API_URL=http://t-800.norteamericano.cl:9000"
+    $envContent = $envContent -replace "OLLAMA_API_URL=.*", "OLLAMA_API_URL=http://t-800.norteamericano.cl:11434"
     $envContent | Set-Content "$publicacionDir\.env"
 }
 

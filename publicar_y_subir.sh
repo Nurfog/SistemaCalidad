@@ -78,7 +78,8 @@ if [ -f "$PROYECTO_DIR/.env" ]; then
     sed -i "s/ASPNETCORE_ENVIRONMENT=Development/ASPNETCORE_ENVIRONMENT=Production/g" "$PUBLICACION_DIR/.env"
     sed -i "s/DB_HOST=localhost/DB_HOST=ec2-18-222-25-254.us-east-2.compute.amazonaws.com/g" "$PUBLICACION_DIR/.env"
     sed -i "s/DB_PASS=Smith.3976!/DB_PASS=Smith3976!/g" "$PUBLICACION_DIR/.env"
-    sed -i "s|AI_API_URL=.*|AI_API_URL=http://t-800.norteamericano.cl|g" "$PUBLICACION_DIR/.env"
+    sed -i "s|WHISPER_API_URL=.*|WHISPER_API_URL=http://t-800.norteamericano.cl:9000|g" "$PUBLICACION_DIR/.env"
+    sed -i "s|OLLAMA_API_URL=.*|OLLAMA_API_URL=http://t-800.norteamericano.cl:11434|g" "$PUBLICACION_DIR/.env"
 fi
 
 # Copiar web.config si existe
