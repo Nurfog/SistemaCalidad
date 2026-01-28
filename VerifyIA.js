@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const AI_API_URL = 'https://subtegumental-untextual-vernell.ngrok-free.dev';
+const AI_API_URL = 'http://t-800.norteamericano.cl:9000';
 const credentials = {
     username: 'sgc_sistema',
     password: 'sgc_sistema_pass_2026!'

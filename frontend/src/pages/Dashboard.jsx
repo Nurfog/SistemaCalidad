@@ -37,7 +37,7 @@ const Dashboard = () => {
         setIaLoading(true);
         setIaMessage(null);
         try {
-            await api.post('/IA/sincronizar');
+            await api.post('/Documentos/rag-sync-total');
             setIaMessage({ text: 'Base de conocimientos actualizada con éxito.', type: 'success' });
         } catch (error) {
             console.error('Error al sincronizar IA:', error);

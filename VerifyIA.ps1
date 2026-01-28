@@ -1,4 +1,4 @@
-$AI_API_URL = "https://subtegumental-untextual-vernell.ngrok-free.dev"
+$AI_API_URL = "http://t-800.norteamericano.cl:9000"
 $body = @{
     username = "sgc_sistema"
     prompt = "¿Cuál es el objetivo del Sistema de Gestión de Calidad (SGC) del Instituto Chileno Norteamericano según la norma NCh 2728 y qué documentos rigen el aprendizaje de la IA? Menciona algo específico que hayas extraído de los archivos PDF."

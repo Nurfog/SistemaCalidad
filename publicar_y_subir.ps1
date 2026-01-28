@@ -6,8 +6,8 @@ Write-Host "🚀 Iniciando proceso de publicación de la API..."
 Write-Host "📜 Nota: La base de datos se actualizará automáticamente al iniciar la aplicación." -ForegroundColor Cyan
 Write-Host "----------------------------------------------------" -ForegroundColor Cyan
 
-$proyectoDir = "d:\mio\DEV\SistemaCalidad\SistemaCalidad.Api"
-$publicacionDir = "d:\mio\DEV\SistemaCalidad\publish"
+$proyectoDir = Join-Path $PSScriptRoot "SistemaCalidad.Api"
+$publicacionDir = Join-Path $PSScriptRoot "publish"
 
 # --- CONFIGURACION FIJA DEL SERVIDOR ---
 $ftpServerBase = "ftp://norteamericano.com/SistemaCalidad"
@@ -32,7 +32,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✅ Publicación local generada correctamente." -ForegroundColor Green
 
 # 1.1 Compilar Frontend (React)
-$frontendDir = "d:\mio\DEV\SistemaCalidad\frontend"
+$frontendDir = Join-Path $PSScriptRoot "frontend"
 if (Test-Path $frontendDir) {
     Write-Host "⚛️ Compilando Frontend (React)..." -ForegroundColor Magenta
     Set-Location $frontendDir
@@ -63,6 +63,7 @@ if (Test-Path "$proyectoDir\.env") {
     $envContent = $envContent -replace "ASPNETCORE_ENVIRONMENT=Development", "ASPNETCORE_ENVIRONMENT=Production"
     $envContent = $envContent -replace "DB_HOST=localhost", "DB_HOST=ec2-18-222-25-254.us-east-2.compute.amazonaws.com"
     $envContent = $envContent -replace "DB_PASS=Smith.3976!", "DB_PASS=Smith3976!"
+    $envContent = $envContent -replace "AI_API_URL=.*", "AI_API_URL=https://t-800.norteamericano.cl"
     $envContent | Set-Content "$publicacionDir\.env"
 }
 
